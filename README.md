@@ -20,7 +20,8 @@ Pages continues to own pages, subpages, sections, items, reorder and public edit
 ## Installation
 
 ```bash
-composer require ivanbaric/niva-template
+composer config repositories.niva-template vcs git@github.com:IvanBaric/niva-template.git
+composer require ivanbaric/niva-template:dev-main
 php artisan vendor:publish --tag=niva-template-config
 ```
 
