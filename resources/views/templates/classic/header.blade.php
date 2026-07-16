@@ -12,6 +12,7 @@
     $isLightImageHeader = $isSplitHeader || $isCraftHeader;
     $usesFloatingPillHeader = $isLightImageHeader || $isPrimarySplitHeader;
     $navItems = $this->navItems();
+    $languageSwitcherComponent = $this->languageSwitcherComponent();
     $imageSources = $this->imageSources();
     $mobileImageSources = $this->mobileImageSources();
     $defaultImageSources = $this->defaultImageSources();
@@ -435,6 +436,15 @@
                 @endforeach
             </nav>
 
+            @if ($languageSwitcherComponent)
+                <div class="hidden w-28 shrink-0 lg:block" data-public-language-switcher>
+                    @livewire($languageSwitcherComponent, [
+                        'label' => null,
+                        'showFlags' => (bool) config('niva-template.language_switcher.show_flags', true),
+                    ], key('niva-template-language-desktop-'.data_get($organization, 'slug')))
+                </div>
+            @endif
+
             <button
                 type="button"
                 x-on:click="open = ! open"
@@ -528,6 +538,14 @@
                                 @endif
                             @endforeach
                         </div>
+                        @if ($languageSwitcherComponent)
+                            <div class="mt-2 border-t border-zinc-200 px-3 pb-1 pt-3 dark:border-zinc-800" data-public-mobile-language-switcher>
+                                @livewire($languageSwitcherComponent, [
+                                    'label' => __('Jezik'),
+                                    'showFlags' => (bool) config('niva-template.language_switcher.show_flags', true),
+                                ], key('niva-template-language-mobile-'.data_get($organization, 'slug')))
+                            </div>
+                        @endif
                         @if ($canAccessPublicManagement)
                             <x-public-user-menu :admin-url="$adminUrl" mobile />
                         @elseif (auth()->guest())

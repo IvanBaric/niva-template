@@ -35,6 +35,11 @@ return [
         'head_view' => null,
     ],
 
+    'language_switcher' => [
+        'component' => null,
+        'show_flags' => true,
+    ],
+
     'registration' => [
         'templates' => true,
         'admin_sections' => true,

@@ -14,6 +14,7 @@ Reusable public website implementation for the IvanBaric Pages and Template Engi
 - package-owned field option providers for galleries and taxonomies
 - default `niva-template::public-layout` for a new public site
 - Croatian and English template translations
+- optional public language switcher rendered consistently in every desktop and mobile header variant
 
 Pages continues to own pages, subpages, sections, items, reorder and public editing. Template Engine continues to own template registration and rendering infrastructure. This package is the concrete public-site implementation layered on top of both.
 
@@ -68,6 +69,8 @@ Host template definitions override package definitions with the same key. Set ei
 ```
 
 Views and translations are publishable through `niva-template-views` and `niva-template-translations`. Prefer configuration and host adapters before publishing views so upgrades remain straightforward.
+
+Set `niva-template.language_switcher.component` to a Livewire component such as `IvanBaric\Language\Livewire\AppLanguageSwitcher` to render the same locale control in all eight headers and the mobile menu. The dependency is optional and the shell renders no switcher when the component is not configured.
 
 ## Reuse Checklist
 

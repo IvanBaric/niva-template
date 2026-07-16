@@ -359,6 +359,16 @@ final class Header extends Component
         return array_key_exists((string) $variant, self::HEADER_VARIANTS) ? (string) $variant : 'header-1';
     }
 
+    /** @return class-string<Component>|null */
+    public function languageSwitcherComponent(): ?string
+    {
+        $component = config('niva-template.language_switcher.component');
+
+        return is_string($component) && is_a($component, Component::class, true)
+            ? $component
+            : null;
+    }
+
     public function render(): View
     {
         return view('niva-template::templates.classic.header');
