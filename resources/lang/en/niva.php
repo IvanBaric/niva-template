@@ -1,0 +1,52 @@
+<?php
+
+return [
+    'templates' => [
+        'classic' => [
+            'label' => 'Classic association',
+            'description' => 'A clear template for associations, cooperatives, clubs and local initiatives.',
+        ],
+        'modern' => [
+            'label' => 'Modern template',
+        ],
+    ],
+    'sections' => [
+        'hero' => 'Hero',
+        'about' => 'About',
+        'features' => 'Features',
+        'content_blocks' => 'Content blocks',
+        'collaboration' => 'Collaboration',
+        'statistics' => 'Statistics',
+        'featured_products' => 'Featured works',
+        'featured_news' => 'Featured posts',
+        'latest_news' => 'Latest posts',
+        'gallery' => 'Gallery',
+        'photo_gallery' => 'Photo gallery',
+        'video' => 'Video',
+        'calendar' => 'Calendar',
+        'partners' => 'Partners',
+        'faq' => 'FAQ',
+        'mission' => 'Mission',
+        'vision' => 'Vision',
+        'values' => 'Values',
+        'team' => 'Team',
+        'all_products' => 'All works',
+        'how_to_order' => 'How to order',
+        'gallery_grid' => 'Gallery grid',
+        'contact' => 'Contact',
+        'social_links' => 'Social networks',
+    ],
+    'fields' => [
+        'address' => 'Address',
+        'badge' => 'Badge',
+        'button_text' => 'Button text',
+        'button_url' => 'Button URL',
+        'description' => 'Description',
+        'email' => 'Email',
+        'eyebrow' => 'Eyebrow',
+        'image' => 'Image',
+        'phone' => 'Phone',
+        'subtitle' => 'Subtitle',
+        'title' => 'Title',
+    ],
+];

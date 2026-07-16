@@ -1,0 +1,52 @@
+<?php
+
+return [
+    'templates' => [
+        'classic' => [
+            'label' => 'Klasična udruga',
+            'description' => 'Pregledan template za udruge, zadruge, klubove i lokalne inicijative.',
+        ],
+        'modern' => [
+            'label' => 'Moderni template',
+        ],
+    ],
+    'sections' => [
+        'hero' => 'Uvodni blok',
+        'about' => 'O nama',
+        'features' => 'Značajke',
+        'content_blocks' => 'Sadržajni blokovi',
+        'collaboration' => 'Suradnja',
+        'statistics' => 'Statistika',
+        'featured_products' => 'Istaknuti radovi',
+        'featured_news' => 'Istaknute objave',
+        'latest_news' => 'Najnovije objave',
+        'gallery' => 'Galerija',
+        'photo_gallery' => 'Foto galerija',
+        'video' => 'Video',
+        'calendar' => 'Kalendar',
+        'partners' => 'Partneri',
+        'faq' => 'Česta pitanja',
+        'mission' => 'Misija',
+        'vision' => 'Vizija',
+        'values' => 'Vrijednosti',
+        'team' => 'Tim',
+        'all_products' => 'Svi radovi',
+        'how_to_order' => 'Kako naručiti',
+        'gallery_grid' => 'Galerijski prikaz',
+        'contact' => 'Kontakt',
+        'social_links' => 'Društvene mreže',
+    ],
+    'fields' => [
+        'address' => 'Adresa',
+        'badge' => 'Kratka oznaka',
+        'button_text' => 'Tekst gumba',
+        'button_url' => 'URL gumba',
+        'description' => 'Opis',
+        'email' => 'E-pošta',
+        'eyebrow' => 'Nadnaslov',
+        'image' => 'Slika',
+        'phone' => 'Telefon',
+        'subtitle' => 'Podnaslov',
+        'title' => 'Naslov',
+    ],
+];
