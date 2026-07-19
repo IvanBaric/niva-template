@@ -1,6 +1,7 @@
 @php
     $logoUrl = $this->logoUrl();
     $footerDescription = $this->organizationDescription();
+    $footerSocialLinks = $this->socialLinks();
     $contactItems = $this->contactItems();
     $canEditFooter = $this->canEditFooter();
     $canCycleFooterDesign = method_exists($this, 'canCycleFooterVariant') && $this->canCycleFooterVariant();
@@ -75,6 +76,16 @@
                 @if ($footerDescription)
                     <p class="mt-5 max-w-md text-base leading-7 text-zinc-600 dark:text-zinc-300">{{ $footerDescription }}</p>
                 @endif
+
+                @if ($footerSocialLinks !== [])
+                    <div class="mt-5 flex flex-wrap items-center gap-3">
+                        @foreach ($footerSocialLinks as $socialLink)
+                            <a href="{{ $socialLink['url'] }}" target="_blank" rel="noopener noreferrer" title="{{ $socialLink['label'] }}" aria-label="{{ $socialLink['label'] }}" class="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-white text-zinc-700 shadow-sm shadow-zinc-950/5 ring-1 ring-[color:var(--niva-primary-100)] transition duration-200 hover:-translate-y-0.5 hover:bg-[color:var(--niva-primary-50)] hover:text-[color:var(--niva-primary-800)] hover:shadow-md hover:shadow-zinc-950/10 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800 dark:hover:bg-[color:var(--niva-primary-950)] dark:hover:text-[color:var(--niva-primary-200)]">
+                                @include('niva-template::templates.classic.partials.social-icon', ['name' => $socialLink['icon'], 'class' => 'size-4'])
+                            </a>
+                        @endforeach
+                    </div>
+                @endif
             </div>
 
             <div>
@@ -84,16 +95,28 @@
                     @foreach ($this->navItems() as $item)
                         @php($children = $item['children'] ?? [])
                         <div>
-                            <a href="{{ $item['href'] }}" class="cursor-pointer text-zinc-600 transition hover:text-[color:var(--niva-primary-800)] dark:text-zinc-300 dark:hover:text-[color:var(--niva-primary-200)]">
+                            <a href="{{ $item['href'] }}" @if (($item['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="cursor-pointer text-zinc-600 transition hover:text-[color:var(--niva-primary-800)] dark:text-zinc-300 dark:hover:text-[color:var(--niva-primary-200)]">
                                 {{ $item['label'] }}
                             </a>
 
                             @if ($children !== [])
                                 <div class="mt-2 grid gap-2 border-l border-zinc-200 pl-3 text-sm dark:border-zinc-700">
                                     @foreach ($children as $child)
-                                        <a href="{{ $child['href'] }}" class="cursor-pointer text-zinc-500 transition hover:text-[color:var(--niva-primary-800)] dark:text-zinc-400 dark:hover:text-[color:var(--niva-primary-200)]">
-                                            {{ $child['label'] }}
-                                        </a>
+                                        <div>
+                                            <a href="{{ $child['href'] }}" @if (($child['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="cursor-pointer text-zinc-500 transition hover:text-[color:var(--niva-primary-800)] dark:text-zinc-400 dark:hover:text-[color:var(--niva-primary-200)]">
+                                                {{ $child['label'] }}
+                                            </a>
+
+                                            @if (($child['children'] ?? []) !== [])
+                                                <div class="mt-2 grid gap-1.5 border-l border-zinc-200 pl-3 text-xs dark:border-zinc-700">
+                                                    @foreach ($child['children'] as $grandchild)
+                                                        <a href="{{ $grandchild['href'] }}" @if (($grandchild['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="cursor-pointer text-zinc-500 transition hover:text-[color:var(--niva-primary-800)] dark:text-zinc-400 dark:hover:text-[color:var(--niva-primary-200)]">
+                                                            {{ $grandchild['label'] }}
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </div>
                                     @endforeach
                                 </div>
                             @endif

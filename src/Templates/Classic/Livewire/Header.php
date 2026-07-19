@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use IvanBaric\NivaTemplate\Support\AdminUrl;
 use IvanBaric\Pages\Support\OnePageNavigation;
+use IvanBaric\Pages\Support\PageNavigationTree;
 use IvanBaric\Pages\Support\PagesModels;
 use IvanBaric\Pages\Support\PublicSiteUrl;
 use Livewire\Attributes\Locked;
@@ -139,6 +140,7 @@ final class Header extends Component
         $pageModel = PagesModels::page();
         $this->publicPages = $pageModel::query()
             ->forTenant((int) $teamId)
+            ->with('visibleSections.visibleItems')
             ->published()
             ->navigationVisible()
             ->ordered()
@@ -154,35 +156,15 @@ final class Header extends Component
             return $onePageItems;
         }
 
-        $pages = $this->pages();
-        $pageIds = $pages->pluck('id')->filter()->map('strval');
-
-        return $pages
-            ->filter(fn (mixed $page): bool => ! filled(data_get($page, 'parent_id'))
-                || ! $pageIds->contains((string) data_get($page, 'parent_id')))
-            ->map(function (mixed $page) use ($pages): array {
-                $children = $pages
-                    ->filter(fn (mixed $child): bool => (string) data_get($child, 'parent_id') === (string) data_get($page, 'id'))
-                    ->map(fn (mixed $child): array => [
-                        'label' => $this->pageLabel($child),
-                        'href' => $this->pageUrl($child),
-                        'active' => url()->current() === $this->pageUrl($child),
-                    ])
-                    ->filter(fn (array $item): bool => filled($item['label']))
-                    ->values()
-                    ->all();
-
-                return [
-                    'label' => $this->pageLabel($page),
-                    'href' => $this->pageUrl($page),
-                    'active' => url()->current() === $this->pageUrl($page)
-                        || collect($children)->contains('active', true),
-                    'children' => $children,
-                ];
-            })
-            ->filter(fn (array $item): bool => filled($item['label']))
-            ->values()
-            ->all();
+        return app(PageNavigationTree::class)->build(
+            $this->pages(),
+            fn (mixed $page): array => [
+                'label' => $this->pageLabel($page),
+                'href' => $this->pageUrl($page),
+                'active' => $this->pageTarget($page) === '_self' && url()->current() === $this->pageUrl($page),
+                'target' => $this->pageTarget($page),
+            ],
+        );
     }
 
     public function organizationName(): string
@@ -333,7 +315,7 @@ final class Header extends Component
     }
 
     /**
-     * @return array<int, array{label: string, href: string, variant: string}>
+     * @return array<int, array{label: string, href: string, variant: string, target: string}>
      */
     public function ctaItems(): array
     {
@@ -429,19 +411,23 @@ final class Header extends Component
 
     private function pageUrl(mixed $page): string
     {
-        $slug = (string) data_get($page, 'slug');
+        if (is_object($page) && method_exists($page, 'navigationUrl') && $page->navigationUrl() !== null) {
+            return $page->navigationUrl();
+        }
 
         if ((bool) data_get($page, 'is_home')) {
             return $this->organizationUrl();
         }
 
-        $pageKey = (string) data_get($page, 'page_key', '');
+        return app(PublicSiteUrl::class)->page($this->organization, $page, $this->pages())
+            ?? route('home');
+    }
 
-        if ($pageKey === '') {
-            $slug = (string) config('pages.public_slugs.'.$slug, $slug);
-        }
-
-        return $this->organizationUrl($slug);
+    private function pageTarget(mixed $page): string
+    {
+        return is_object($page) && method_exists($page, 'navigationTarget')
+            ? $page->navigationTarget()
+            : '_self';
     }
 
     private function pageLabel(mixed $page): string
@@ -451,18 +437,16 @@ final class Header extends Component
             : (string) data_get($page, 'title', data_get($page, 'slug'));
     }
 
-    private function pageUrlForUuid(string $pageUuid): ?string
+    private function pageForUuid(string $pageUuid): mixed
     {
-        $page = $this->pages()
+        return $this->pages()
             ->first(fn (mixed $page): bool => (string) data_get($page, 'uuid', '') === $pageUuid);
-
-        return $page ? $this->pageUrl($page) : null;
     }
 
     /**
      * @param  array<int, string>  $fallbackPageKeys
      * @param  array<int, string>  $fallbackSlugs
-     * @return array{label: string, href: string|null, variant: string}|null
+     * @return array{label: string, href: string|null, variant: string, target: string}|null
      */
     private function ctaItem(int $position, string $defaultLabel, string $variant, array $fallbackPageKeys, array $fallbackSlugs): ?array
     {
@@ -475,16 +459,15 @@ final class Header extends Component
 
         $label = trim((string) data_get($settings, 'cta.'.$position.'.text', $defaultLabel));
         $pageUuid = trim((string) data_get($settings, 'cta.'.$position.'.page_uuid', ''));
-        $href = $pageUuid !== '' ? $this->pageUrlForUuid($pageUuid) : null;
-
-        if ($pageUuid === '') {
-            $href = $this->pageUrlFor($fallbackPageKeys, $fallbackSlugs);
-        }
+        $page = $pageUuid !== ''
+            ? $this->pageForUuid($pageUuid)
+            : $this->pageFor($fallbackPageKeys, $fallbackSlugs);
 
         return [
             'label' => $label !== '' ? $label : $defaultLabel,
-            'href' => $href,
+            'href' => $page ? $this->pageUrl($page) : null,
             'variant' => $variant,
+            'target' => $page ? $this->pageTarget($page) : '_self',
         ];
     }
 
@@ -492,17 +475,15 @@ final class Header extends Component
      * @param  array<int, string>  $pageKeys
      * @param  array<int, string>  $slugs
      */
-    private function pageUrlFor(array $pageKeys, array $slugs): ?string
+    private function pageFor(array $pageKeys, array $slugs): mixed
     {
-        $page = $this->pages()
+        return $this->pages()
             ->first(function (mixed $page) use ($pageKeys, $slugs): bool {
                 $pageKey = (string) data_get($page, 'page_key', '');
                 $slug = (string) data_get($page, 'slug', '');
 
                 return in_array($pageKey, $pageKeys, true) || in_array($slug, $slugs, true);
             });
-
-        return $page ? $this->pageUrl($page) : null;
     }
 
     /** @return Collection<int, mixed> */

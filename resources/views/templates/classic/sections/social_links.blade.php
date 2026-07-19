@@ -1,40 +1,12 @@
         <?php if ($type === 'social_links') { ?>
             @php
-                $socialNetworkLabels = [
-                    'facebook' => 'Facebook',
-                    'instagram' => 'Instagram',
-                    'youtube' => 'YouTube',
-                    'tiktok' => 'TikTok',
-                    'linkedin' => 'LinkedIn',
-                    'x' => 'X / Twitter',
-                    'whatsapp' => 'WhatsApp',
-                    'viber' => 'Viber',
-                    'pinterest' => 'Pinterest',
-                ];
-                $itemSocialLinks = $items
-                    ->filter(fn ($item) => filled($item->url))
-                    ->map(function ($item) use ($publicUrl, $socialNetworkLabels) {
-                        $icon = trim((string) $item->icon);
-                        $label = trim((string) $item->localized('title'));
-
-                        return [
-                            'label' => $label !== '' ? $label : ($socialNetworkLabels[$icon] ?? __('Društvena mreža')),
-                            'url' => $publicUrl->sanitize($item->url),
-                            'icon' => $icon !== '' ? $icon : str($label)->slug('_')->toString(),
-                        ];
-                    })
-                    ->filter(fn (array $link) => filled($link['url']))
-                    ->values();
-                $legacySocialLinks = collect((array) data_get($section->settings, 'links', []))
-                    ->filter(fn ($url) => filled($url))
-                    ->map(fn ($url, $key) => [
-                        'label' => $socialNetworkLabels[$key] ?? str((string) $key)->headline()->toString(),
-                        'url' => $publicUrl->sanitize($url),
-                        'icon' => (string) $key,
-                    ])
-                    ->filter(fn (array $link) => filled($link['url']))
-                    ->values();
-                $socialLinks = $itemSocialLinks->isNotEmpty() ? $itemSocialLinks : $legacySocialLinks;
+                $socialLinksResolver = app(\IvanBaric\NivaTemplate\Support\SocialLinks::class);
+                $sharedSocialLinks = collect($this->socialLinks());
+                $itemSocialLinks = collect($socialLinksResolver->fromSectionItems($items));
+                $legacySocialLinks = collect($socialLinksResolver->fromLegacySettings((array) $section->settings));
+                $socialLinks = $sharedSocialLinks->isNotEmpty()
+                    ? $sharedSocialLinks
+                    : ($itemSocialLinks->isNotEmpty() ? $itemSocialLinks : $legacySocialLinks);
                 $socialLayout = (string) data_get($section->settings, 'layout_variant', 'cards');
                 $socialLayout = in_array($socialLayout, ['cards', 'strip', 'icons'], true) ? $socialLayout : 'cards';
             @endphp

@@ -125,10 +125,13 @@
     }
     $hasSocialItemLinks = $type === 'social_links'
         && $items->contains(fn ($item) => filled($publicUrl->sanitize(data_get($item, 'url'))));
+    $hasSharedSocialLinks = $type === 'social_links'
+        && $this->socialLinks() !== [];
     $hasLegacySocialLinks = $type === 'social_links'
         && collect((array) data_get($section->settings, 'links', []))
             ->contains(fn ($url) => filled($publicUrl->sanitize($url)));
     $showSocialLinksEmptyState = $type === 'social_links'
+        && ! $hasSharedSocialLinks
         && ! $hasSocialItemLinks
         && ! $hasLegacySocialLinks;
     $hasVideoLinks = $type === 'video'

@@ -1,4 +1,7 @@
         <?php if ($type === 'gallery' || $type === 'gallery_grid') { ?>
+            @if ($this->usesDirectGallery())
+                @include('niva-template::templates.classic.sections.photo_gallery')
+            @else
             @php
                 $galleryLayout = (string) data_get($section, 'settings.layout_variant', 'cards');
                 $galleryLayout = in_array($galleryLayout, ['cards', 'text_cards', 'masonry', 'featured', 'wall', 'journal', 'carousel'], true) ? $galleryLayout : 'cards';
@@ -377,5 +380,6 @@
                         <flux:icon.loading class="size-4" wire:loading wire:target="loadMore" />
                     </button>
                 </div>
+            @endif
             @endif
         <?php } ?>

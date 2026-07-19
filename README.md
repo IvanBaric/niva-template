@@ -57,6 +57,32 @@ For a package-owned public shell:
 
 Set `niva-template.layout.head_view` when the host needs Vite assets, SEO tags, fonts or a favicon. A project may keep its own layout while still using every template component.
 
+## Public Section Cache
+
+Public section data is cached by default outside the testing environment. Cache keys contain a schema version, a hashed tenant identifier, tenant and section version tokens, template, section type, locale and query context. Cached Eloquent results are stored as array snapshots instead of serialized PHP objects, so the cache remains compatible with strict cache serialization policies and package upgrades.
+
+Static section data uses a one-year TTL. Time-sensitive posts, products, galleries, counts and taxonomy filters use a one-hour TTL plus a time bucket. Model observers and package domain events invalidate the relevant section or tenant version after successful transaction commit on create, update, soft delete, restore and force delete. This includes section-item reordering, taxonomy pivot changes and gallery media operations.
+
+The defaults can be overridden through environment variables:
+
+```dotenv
+NIVA_PUBLIC_SECTION_CACHE=true
+NIVA_PUBLIC_SECTION_CACHE_STORE=redis
+NIVA_PUBLIC_SECTION_CACHE_STATIC_TTL=31536000
+NIVA_PUBLIC_SECTION_CACHE_DYNAMIC_TTL=3600
+NIVA_PUBLIC_SECTION_CACHE_LOCK_SECONDS=10
+NIVA_PUBLIC_SECTION_CACHE_LOCK_WAIT_SECONDS=3
+```
+
+Future bulk writes made directly through the query builder must dispatch an existing package domain event or invalidate the affected version explicitly because query-builder writes do not run Eloquent observers:
+
+```php
+use IvanBaric\NivaTemplate\Support\PublicSectionCache;
+
+app(PublicSectionCache::class)->invalidateSection($teamId, $sectionUuid);
+app(PublicSectionCache::class)->invalidateTeam($teamId);
+```
+
 ## Extension
 
 Host template definitions override package definitions with the same key. Set either registration flag to `false` when replacing templates or admin section definitions:

@@ -91,25 +91,35 @@
                             </div>
                         @endif
 
-                        <div class="cx-public-grid-compact sm:grid-cols-2 lg:grid-cols-4">
-                            @foreach ($contactCards as $card)
-                                <article class="cx-public-surface cx-public-card-padding dark:bg-zinc-950 dark:ring-zinc-800 dark:shadow-black/20">
-                                    <div class="mb-4 inline-flex size-10 items-center justify-center rounded-full bg-[color:var(--niva-primary-50)] text-[color:var(--niva-primary-700)] dark:bg-[color:var(--niva-primary-950)] dark:text-[color:var(--niva-primary-300)]">
-                                        <flux:icon :name="$card['icon']" class="size-5" />
-                                    </div>
-                                    <h3 class="cx-public-meta-strong text-zinc-950 dark:text-white">{{ $card['label'] }}</h3>
-                                    <p class="mt-2 break-words cx-public-body text-zinc-600 dark:text-zinc-300">
-                                        @if ($card['key'] === 'email')
-                                            <a href="mailto:{{ $card['value'] }}" class="cursor-pointer font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>
-                                        @elseif ($card['key'] === 'phone')
-                                            <a href="tel:{{ preg_replace('/\s+/', '', (string) $card['value']) }}" class="cursor-pointer font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>
-                                        @else
-                                            <span class="whitespace-pre-line">{{ $card['value'] }}</span>
-                                        @endif
-                                    </p>
-                                </article>
-                            @endforeach
-                        </div>
+                        @if ($contactCards->isNotEmpty())
+                            <div class="cx-public-grid-compact sm:grid-cols-2 lg:grid-cols-4">
+                                @foreach ($contactCards as $card)
+                                    <article class="cx-public-surface cx-public-card-padding dark:bg-zinc-950 dark:ring-zinc-800 dark:shadow-black/20">
+                                        <div class="mb-4 inline-flex size-10 items-center justify-center rounded-full bg-[color:var(--niva-primary-50)] text-[color:var(--niva-primary-700)] dark:bg-[color:var(--niva-primary-950)] dark:text-[color:var(--niva-primary-300)]">
+                                            <flux:icon :name="$card['icon']" class="size-5" />
+                                        </div>
+                                        <h3 class="cx-public-meta-strong text-zinc-950 dark:text-white">{{ $card['label'] }}</h3>
+                                        <p class="mt-2 break-words cx-public-body text-zinc-600 dark:text-zinc-300">
+                                            @if ($card['key'] === 'email')
+                                                <a href="mailto:{{ $card['value'] }}" class="cursor-pointer font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>
+                                            @elseif ($card['key'] === 'phone')
+                                                <a href="tel:{{ preg_replace('/\s+/', '', (string) $card['value']) }}" class="cursor-pointer font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>
+                                            @else
+                                                <span class="whitespace-pre-line">{{ $card['value'] }}</span>
+                                            @endif
+                                        </p>
+                                    </article>
+                                @endforeach
+                            </div>
+                        @else
+                            <x-public-section-empty-state
+                                :section="$section"
+                                icon="envelope"
+                                :title="__('Kontakt podaci uskoro')"
+                                :description="__('Kontakt podaci prikazat će se ovdje kada budu spremni za objavu.')"
+                                compact
+                            />
+                        @endif
                     </div>
                 @elseif ($contactLayout === 'letter')
                     <div class="cx-public-section-content cx-public-surface-band cx-public-band-padding-loose dark:bg-zinc-900/80">
@@ -127,14 +137,25 @@
                                 @endif
                             </div>
 
-                            <dl class="cx-public-grid-tight">
-                                @foreach ($contactCards as $card)
-                                    <div class="cx-public-surface-plain cx-public-card-padding-compact dark:bg-zinc-950 dark:shadow-black/20">
-                                        <dt class="flex items-center gap-2 cx-public-meta-strong text-zinc-950 dark:text-white"><flux:icon :name="$card['icon']" class="size-4 text-[color:var(--niva-primary-700)] dark:text-[color:var(--niva-primary-300)]" />{{ $card['label'] }}</dt>
-                                        <dd class="mt-2 min-w-0 break-words cx-public-body text-zinc-600 dark:text-zinc-300">@if ($card['key'] === 'email')<a href="mailto:{{ $card['value'] }}" class="cursor-pointer font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>@elseif ($card['key'] === 'phone')<a href="tel:{{ preg_replace('/\s+/', '', (string) $card['value']) }}" class="cursor-pointer font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>@else<span class="whitespace-pre-line">{{ $card['value'] }}</span>@endif</dd>
-                                    </div>
-                                @endforeach
-                            </dl>
+                            @if ($contactCards->isNotEmpty())
+                                <dl class="cx-public-grid-tight">
+                                    @foreach ($contactCards as $card)
+                                        <div class="cx-public-surface-plain cx-public-card-padding-compact dark:bg-zinc-950 dark:shadow-black/20">
+                                            <dt class="flex items-center gap-2 cx-public-meta-strong text-zinc-950 dark:text-white"><flux:icon :name="$card['icon']" class="size-4 text-[color:var(--niva-primary-700)] dark:text-[color:var(--niva-primary-300)]" />{{ $card['label'] }}</dt>
+                                            <dd class="mt-2 min-w-0 break-words cx-public-body text-zinc-600 dark:text-zinc-300">@if ($card['key'] === 'email')<a href="mailto:{{ $card['value'] }}" class="cursor-pointer font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>@elseif ($card['key'] === 'phone')<a href="tel:{{ preg_replace('/\s+/', '', (string) $card['value']) }}" class="cursor-pointer font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>@else<span class="whitespace-pre-line">{{ $card['value'] }}</span>@endif</dd>
+                                        </div>
+                                    @endforeach
+                                </dl>
+                            @else
+                                <x-public-section-empty-state
+                                    :section="$section"
+                                    class="flex min-h-64 flex-col items-center justify-center"
+                                    icon="envelope"
+                                    :title="__('Kontakt podaci uskoro')"
+                                    :description="__('Kontakt podaci prikazat će se ovdje kada budu spremni za objavu.')"
+                                    compact
+                                />
+                            @endif
                         </div>
                     </div>
                 @else
@@ -154,25 +175,36 @@
                             </div>
 
                             <div class="p-6 lg:p-8">
-                                <dl class="cx-public-stack-compact">
-                                    @foreach ($contactCards as $card)
-                                        <div class="grid gap-2 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-900/70 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-5">
-                                            <dt class="flex items-center gap-2 cx-public-meta-strong text-zinc-950 dark:text-white">
-                                                <flux:icon :name="$card['icon']" class="size-4 text-[color:var(--niva-primary-700)] dark:text-[color:var(--niva-primary-300)]" />
-                                                {{ $card['label'] }}
-                                            </dt>
-                                            <dd class="min-w-0 cx-public-body text-zinc-600 dark:text-zinc-300">
-                                                @if ($card['key'] === 'email')
-                                                    <a href="mailto:{{ $card['value'] }}" class="cursor-pointer break-words font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>
-                                                @elseif ($card['key'] === 'phone')
-                                                    <a href="tel:{{ preg_replace('/\s+/', '', (string) $card['value']) }}" class="cursor-pointer font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>
-                                                @else
-                                                    <span class="whitespace-pre-line">{{ $card['value'] }}</span>
-                                                @endif
-                                            </dd>
-                                        </div>
-                                    @endforeach
-                                </dl>
+                                @if ($contactCards->isNotEmpty())
+                                    <dl class="cx-public-stack-compact">
+                                        @foreach ($contactCards as $card)
+                                            <div class="grid gap-2 rounded-xl bg-zinc-50 p-4 dark:bg-zinc-900/70 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-5">
+                                                <dt class="flex items-center gap-2 cx-public-meta-strong text-zinc-950 dark:text-white">
+                                                    <flux:icon :name="$card['icon']" class="size-4 text-[color:var(--niva-primary-700)] dark:text-[color:var(--niva-primary-300)]" />
+                                                    {{ $card['label'] }}
+                                                </dt>
+                                                <dd class="min-w-0 cx-public-body text-zinc-600 dark:text-zinc-300">
+                                                    @if ($card['key'] === 'email')
+                                                        <a href="mailto:{{ $card['value'] }}" class="cursor-pointer break-words font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>
+                                                    @elseif ($card['key'] === 'phone')
+                                                        <a href="tel:{{ preg_replace('/\s+/', '', (string) $card['value']) }}" class="cursor-pointer font-medium text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $card['value'] }}</a>
+                                                    @else
+                                                        <span class="whitespace-pre-line">{{ $card['value'] }}</span>
+                                                    @endif
+                                                </dd>
+                                            </div>
+                                        @endforeach
+                                    </dl>
+                                @else
+                                    <x-public-section-empty-state
+                                        :section="$section"
+                                        class="flex min-h-64 flex-col items-center justify-center"
+                                        icon="envelope"
+                                        :title="__('Kontakt podaci uskoro')"
+                                        :description="__('Kontakt podaci prikazat će se ovdje kada budu spremni za objavu.')"
+                                        compact
+                                    />
+                                @endif
                             </div>
                         </div>
                     </div>

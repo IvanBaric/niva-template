@@ -7,6 +7,7 @@ namespace IvanBaric\NivaTemplate\Admin;
 use IvanBaric\NivaTemplate\Admin\Options\BlogTaxonomyFieldOptions;
 use IvanBaric\NivaTemplate\Admin\Options\GalleryFieldOptions;
 use IvanBaric\NivaTemplate\Admin\Options\ProductTaxonomyFieldOptions;
+use IvanBaric\NivaTemplate\Support\SocialLinks;
 use IvanBaric\Pages\Admin\Action;
 use IvanBaric\Pages\Admin\AdminSection;
 use IvanBaric\Pages\Admin\Field;
@@ -145,11 +146,12 @@ final class PageSections
     {
         return AdminSection::add('template_footer')
             ->label(__('Podnožje'))
-            ->option('storage', 'settings.templates.niva-classic.footer')
+            ->option('storage', 'settings')
             ->messages([
                 'required' => __('Obavezno polje'),
                 'saved' => __('Podnožje je spremljeno.'),
                 'layout_saved' => __('Izgled podnožja je spremljen.'),
+                'settings_saved' => __('Postavke podnožja su spremljene.'),
             ])
             ->tabs([
                 Tab::form(__('Sadržaj'))
@@ -162,6 +164,7 @@ final class PageSections
                             ->rows(3)
                             ->nullable()
                             ->max(300)
+                            ->storage('templates.niva-classic.footer.description')
                             ->defaultFrom('description')
                             ->help(__('Kratki tekst koji se prikazuje ispod naziva zadruge u podnožju.')),
 
@@ -169,13 +172,14 @@ final class PageSections
                             ->label(__('Tekst podnožja'))
                             ->required()
                             ->max(180)
+                            ->storage('templates.niva-classic.footer.copyright')
                             ->default(__('© :year Školska zadruga. Sva prava pridržana.', ['year' => now()->year])),
                     ]),
 
                 Tab::layout(__('Izgled'))
                     ->heading(__('Izgled'))
                     ->description(__('Trenutno je dostupan jedan usklađeni izgled podnožja.'))
-                    ->storage('layout_variant')
+                    ->storage('templates.niva-classic.footer.layout_variant')
                     ->default('classic')
                     ->submitLabel(__('Spremi izgled'))
                     ->variants([
@@ -184,6 +188,26 @@ final class PageSections
                             ->description(__('Postojeći izgled s nazivom zadruge, poveznicama i tekstom autorskih prava.'))
                             ->preview('footer_classic'),
                     ]),
+
+                Tab::settings(__('Postavke'))
+                    ->heading(__('Postavke podnožja'))
+                    ->description(__('Uredite prikaz stranica u podnožju.'))
+                    ->submitLabel(__('Spremi postavke'))
+                    ->fields([
+                        $this->footerNavigationDepthField(),
+                    ]),
+
+                Tab::settings(__('Društvene mreže'), 'social')
+                    ->heading(__('Društvene mreže'))
+                    ->description(__('Unesite URL-ove profila koji se prikazuju u podnožju i u modulu Društvene mreže. Prazna polja se neće prikazati.'))
+                    ->submitLabel(__('Spremi društvene mreže'))
+                    ->fields($this->footerSocialLinkFields()),
+
+                Tab::settings(__('Kontakt'), 'contact')
+                    ->heading(__('Kontakt u podnožju'))
+                    ->description(__('Odaberite koji se postojeći kontakt podaci prikazuju u podnožju. Same podatke uređuje administrator.'))
+                    ->submitLabel(__('Spremi kontakt'))
+                    ->fields($this->footerContactVisibilityFields()),
             ]);
     }
 
@@ -843,7 +867,7 @@ final class PageSections
 
                 Tab::settings(__('Filter'), 'filter')
                     ->heading(__('Odabir radova'))
-                    ->description(__('Odaberite prikazuju li se svi radovi, samo istaknuti radovi ili radovi povezani s odabranim taxonomy vrijednostima.'))
+                    ->description(__('Odaberite prikazuju li se svi radovi, samo istaknuti radovi ili radovi povezani s odabranim kategorijama i oznakama.'))
                     ->option('icon', 'funnel')
                     ->fields([
                         Field::select('content_source')
@@ -853,7 +877,7 @@ final class PageSections
                             ->options([
                                 ['value' => 'all', 'label' => __('Sve radove')],
                                 ['value' => 'featured', 'label' => __('Istaknute radove')],
-                                ['value' => 'taxonomy', 'label' => __('Radove prema taxonomy')],
+                                ['value' => 'taxonomy', 'label' => __('Radove iz kategorije')],
                             ])
                             ->rules(['required', 'string', 'in:all,featured,taxonomy'])
                             ->storage('settings.content_source'),
@@ -1011,39 +1035,41 @@ final class PageSections
                 'settings_saved' => __('Postavke galerije su spremljene.'),
             ])
             ->tabs([
-                Tab::settings(__('Izvor'), 'source')
-                    ->heading(__('Izvor fotografija'))
-                    ->description(__('Prikažite postojeće albume ili učitajte fotografije koje pripadaju samo ovoj sekciji.'))
+                Tab::settings(__('Filter'), 'source')
+                    ->heading(__('Filter galerija'))
+                    ->description(__('Odaberite prikazuju li se sve galerije, jedna galerija ili fotografije učitane u trenutnu sekciju.'))
                     ->option('icon', 'funnel')
                     ->fields([
                         Field::select('content_source')
                             ->label(__('Prikaži'))
                             ->default('albums')
                             ->options([
-                                ['value' => 'albums', 'label' => __('Postojeće galerije')],
-                                ['value' => 'direct', 'label' => __('Fotografije učitane u sekciju')],
+                                ['value' => 'albums', 'label' => __('Sve galerije')],
+                                ['value' => 'selected_gallery', 'label' => __('Jedna galerija')],
+                                ['value' => 'direct', 'label' => __('Fotografije učitane u trenutnu sekciju')],
                             ])
-                            ->rules(['required', 'string', 'in:albums,direct'])
+                            ->rules(['required', 'string', 'in:albums,selected_gallery,direct'])
                             ->storage('settings.content_source'),
 
-                        Field::checkboxList('gallery_uuids')
-                            ->label(__('Odabrane galerije'))
-                            ->help(__('Ako ništa ne odaberete, prikazat će se sve dostupne galerije.'))
-                            ->default([])
+                        Field::select('gallery_uuid')
+                            ->label(__('Galerija'))
+                            ->help(__('Odaberite jednu galeriju koja će se prikazati u ovoj sekciji.'))
                             ->optionsProvider(GalleryFieldOptions::class)
-                            ->visibleWhen('content_source', 'albums')
-                            ->storage('settings.gallery_uuids'),
+                            ->visibleWhen('content_source', 'selected_gallery')
+                            ->rules(['nullable', 'string'])
+                            ->storage('settings.gallery_uuid'),
                     ]),
 
-                Tab::livewire(__('Sadržaj'), 'gallery.source-manager')
+                Tab::livewire(__('Galerija'), 'gallery.source-manager')
                     ->heading($heading)
                     ->description($description.' '.__('Fotografije i albumi uređuju se na popisu galerija.'))
-                    ->visibleWhen('content_source', 'albums'),
+                    ->visibleWhen('content_source', ['albums', 'selected_gallery', 'direct']),
 
                 Tab::view(__('Fotografije'), 'admin.pages.sections.photo-gallery-tab', 'photos')
                     ->heading(__('Fotografije u sekciji'))
                     ->description(__('Dodajte fotografije izravno u ovu sekciju bez stvaranja zasebnog albuma.'))
                     ->option('icon', 'photo')
+                    ->option('embed_in_source_panel', true)
                     ->visibleWhen('content_source', 'direct'),
 
                 Tab::layout(__('Izgled'))
@@ -1100,31 +1126,31 @@ final class PageSections
                             ->label(__('2 stupca'))
                             ->description(__('Fotografije u jednostavnoj dvostupčanoj mreži.'))
                             ->option('preview', 'photo_gallery_grid_2x2')
-                            ->visibleWhen('content_source', 'direct'),
+                            ->visibleWhen('content_source', ['direct', 'selected_gallery']),
 
                         LayoutVariant::add('grid_3x3')
                             ->label(__('3 stupca'))
                             ->description(__('Fotografije u kompaktnoj mreži s tri stupca.'))
                             ->option('preview', 'photo_gallery_grid_3x3')
-                            ->visibleWhen('content_source', 'direct'),
+                            ->visibleWhen('content_source', ['direct', 'selected_gallery']),
 
                         LayoutVariant::add('grid')
                             ->label(__('4 stupca'))
                             ->description(__('Bogata mreža fotografija u četiri stupca.'))
                             ->option('preview', 'photo_gallery_grid')
-                            ->visibleWhen('content_source', 'direct'),
+                            ->visibleWhen('content_source', ['direct', 'selected_gallery']),
 
                         LayoutVariant::add('photo_featured')
                             ->label(__('Istaknuta prva'))
                             ->description(__('Prva fotografija je veća, a ostale je prate.'))
                             ->option('preview', 'photo_gallery_featured')
-                            ->visibleWhen('content_source', 'direct'),
+                            ->visibleWhen('content_source', ['direct', 'selected_gallery']),
 
                         LayoutVariant::add('mosaic')
                             ->label(__('Mozaik'))
                             ->description(__('Dinamičniji raspored s različitim veličinama fotografija.'))
                             ->option('preview', 'photo_gallery_mosaic')
-                            ->visibleWhen('content_source', 'direct'),
+                            ->visibleWhen('content_source', ['direct', 'selected_gallery']),
 
                         LayoutVariant::add('photo_carousel')
                             ->label(__('Klizni prikaz fotografija'))
@@ -1132,7 +1158,7 @@ final class PageSections
                             ->option('preview', 'photo_gallery_carousel')
                             ->option('badge', __('Animacija'))
                             ->option('animated', true)
-                            ->visibleWhen('content_source', 'direct'),
+                            ->visibleWhen('content_source', ['direct', 'selected_gallery']),
                     ]),
 
                 Tab::settings(__('Postavke'))
@@ -1164,13 +1190,13 @@ final class PageSections
                                 ['value' => 'video', 'label' => __('16:9')],
                             ])
                             ->rules(['required', 'string', 'in:four_three,three_two,square,video'])
-                            ->visibleWhen('content_source', 'direct')
+                            ->visibleWhen('content_source', ['direct', 'selected_gallery'])
                             ->storage('settings.image_ratio'),
 
                         Field::boolean('show_captions')
                             ->label(__('Prikaži opise fotografija'))
                             ->default(false)
-                            ->visibleWhen('content_source', 'direct')
+                            ->visibleWhen('content_source', ['direct', 'selected_gallery'])
                             ->storage('settings.show_captions'),
                     ]),
 
@@ -1489,11 +1515,6 @@ final class PageSections
                 'settings_saved' => __('Postavke objava su spremljene.'),
             ])
             ->tabs([
-                Tab::livewire(__('Sadržaj'), 'blog.source-manager')
-                    ->heading($label)
-                    ->description($sourceDescription.' '.__('Sadržaj se uređuje na popisu objava.'))
-                    ->parameters([]),
-
                 Tab::settings(__('Filter'), $filterTabKey)
                     ->heading(__('Odabir objava'))
                     ->description(__('Odaberite prikazuju li se sve objave, samo istaknute objave ili objave prema kategorijama i oznakama.'))
@@ -1519,6 +1540,11 @@ final class PageSections
                             ->visibleWhen('content_source', 'taxonomy')
                             ->storage('settings.taxonomy_item_uuids'),
                     ]),
+
+                Tab::livewire(__('Objave'), 'blog.source-manager')
+                    ->heading($label)
+                    ->description($sourceDescription.' '.__('Sadržaj se uređuje na popisu objava.'))
+                    ->parameters([]),
 
                 Tab::layout(__('Izgled'))
                     ->heading(__('Izgled sekcije'))
@@ -2969,17 +2995,58 @@ final class PageSections
     /** @return array<string, string> */
     private function socialIconOptions(): array
     {
+        return SocialLinks::networkLabels();
+    }
+
+    private function footerNavigationDepthField(): Field
+    {
+        return Field::select('footer_navigation_depth')
+            ->label(__('Stranice u podnožju'))
+            ->storage('templates.niva-classic.footer.navigation_depth')
+            ->default('top_level')
+            ->options([
+                'top_level' => __('Samo glavne stranice'),
+                'with_children' => __('Glavne stranice i podstranice'),
+            ])
+            ->help(__('Odaberite kraći prikaz ako stranica ima puno podstranica.'));
+    }
+
+    /** @return array<int, Field> */
+    private function footerContactVisibilityFields(): array
+    {
         return [
-            'facebook' => 'Facebook',
-            'instagram' => 'Instagram',
-            'youtube' => 'YouTube',
-            'tiktok' => 'TikTok',
-            'linkedin' => 'LinkedIn',
-            'x' => 'X / Twitter',
-            'whatsapp' => 'WhatsApp',
-            'viber' => 'Viber',
-            'pinterest' => 'Pinterest',
+            Field::toggle('footer_contact_show_email')
+                ->label(__('Prikaži e-poštu'))
+                ->storage('templates.niva-classic.footer.contact.show_email')
+                ->default(true)
+                ->help(__('Prikazuje e-poštu koja je unesena u podacima organizacije.')),
+
+            Field::toggle('footer_contact_show_address')
+                ->label(__('Prikaži adresu'))
+                ->storage('templates.niva-classic.footer.contact.show_address')
+                ->default(true)
+                ->help(__('Prikazuje adresu koja je unesena u podacima organizacije.')),
+
+            Field::toggle('footer_contact_show_postal_city')
+                ->label(__('Prikaži poštanski broj i mjesto'))
+                ->storage('templates.niva-classic.footer.contact.show_postal_city')
+                ->default(true)
+                ->help(__('Prikazuje poštanski broj i mjesto koji su uneseni u podacima organizacije.')),
         ];
+    }
+
+    /** @return array<int, Field> */
+    private function footerSocialLinkFields(): array
+    {
+        return collect(SocialLinks::networkLabels())
+            ->map(fn (string $label, string $key): Field => Field::url('social_'.$key.'_url')
+                ->label($label)
+                ->nullable()
+                ->max(2048)
+                ->storage('social_links.'.$key.'.url')
+                ->help(__('Ako je polje prazno, mreža se neće prikazati na javnoj stranici.')))
+            ->values()
+            ->all();
     }
 
     /** @return array<int, LayoutVariant> */

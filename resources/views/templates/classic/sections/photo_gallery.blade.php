@@ -16,9 +16,9 @@
         default => 'aspect-[4/3]',
     };
 
-    $mediaItems = method_exists($section, 'galleryMedia')
-        ? $section->galleryMedia('images')->values()
-        : collect();
+    $mediaItems = method_exists($this, 'activeGalleryMedia')
+        ? $this->activeGalleryMedia()->values()
+        : (method_exists($section, 'galleryMedia') ? $section->galleryMedia('images')->values() : collect());
 
     $mediaUrl = static function (mixed $media, array $preferred): ?string {
         if (! is_object($media) || ! method_exists($media, 'getUrl')) {

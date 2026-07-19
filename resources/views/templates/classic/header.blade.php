@@ -384,7 +384,7 @@
             ]) data-section-nav>
                 @foreach ($navItems as $item)
                     <div class="group relative flex items-center">
-                    <a href="{{ $item['href'] }}" data-section-nav-link data-active-class="" data-inactive-class="" @class([
+                    <a href="{{ $item['href'] }}" @if (($item['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif data-section-nav-link data-active-class="" data-inactive-class="" @class([
                         'cursor-pointer font-medium transition',
                         'rounded-full px-3.5 py-2' => $isHeroHeader,
                         'rounded-full px-3 py-1.5' => ! $isHeroHeader && ! $isEditorialHeader && ! $usesFloatingPillHeader && ! $usesImageBandHeader,
@@ -418,16 +418,56 @@
                         </button>
 
                         <div class="invisible absolute left-0 top-full z-[150] w-64 translate-y-1 pt-3 opacity-0 transition duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
-                            <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-950 shadow-xl shadow-zinc-950/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white">
+                            <div class="rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-950 shadow-xl shadow-zinc-950/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white">
                                 @foreach ($item['children'] as $child)
-                                    <a href="{{ $child['href'] }}" @class([
-                                        'flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition',
-                                        'bg-[color:var(--niva-primary-50)] text-[color:var(--niva-primary-800)] dark:bg-white/10 dark:text-white' => $child['active'],
-                                        'text-zinc-700 hover:bg-zinc-100 hover:text-[color:var(--niva-primary-800)] dark:text-zinc-200 dark:hover:bg-white/10 dark:hover:text-white' => ! $child['active'],
-                                    ])>
-                                        <span class="min-w-0 truncate">{{ $child['label'] }}</span>
-                                        <flux:icon name="chevron-right" class="size-3.5 shrink-0 opacity-45" />
-                                    </a>
+                                    <div
+                                        x-data="{ submenuOpen: false, submenuSide: 'right' }"
+                                        x-on:mouseenter="submenuSide = window.innerWidth - $el.getBoundingClientRect().right >= 264 ? 'right' : 'left'; submenuOpen = true"
+                                        x-on:mouseleave="submenuOpen = false"
+                                        x-on:focusin="submenuSide = window.innerWidth - $el.getBoundingClientRect().right >= 264 ? 'right' : 'left'; submenuOpen = true"
+                                        x-on:focusout="if (! $el.contains($event.relatedTarget)) submenuOpen = false"
+                                        class="relative"
+                                        data-navigation-submenu-item
+                                    >
+                                        <a href="{{ $child['href'] }}" @if (($child['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif @class([
+                                            'flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition',
+                                            'bg-[color:var(--niva-primary-50)] text-[color:var(--niva-primary-800)] dark:bg-white/10 dark:text-white' => $child['active'],
+                                            'text-zinc-700 hover:bg-zinc-100 hover:text-[color:var(--niva-primary-800)] dark:text-zinc-200 dark:hover:bg-white/10 dark:hover:text-white' => ! $child['active'],
+                                        ])>
+                                            <span class="min-w-0 truncate">{{ $child['label'] }}</span>
+                                            @if (($child['children'] ?? []) !== [])
+                                                <flux:icon name="chevron-right" class="size-3.5 shrink-0 opacity-45" />
+                                            @endif
+                                        </a>
+
+                                        @if (($child['children'] ?? []) !== [])
+                                            <div
+                                                x-cloak
+                                                x-show="submenuOpen"
+                                                x-transition:enter="transition ease-out duration-150"
+                                                x-transition:enter-start="opacity-0"
+                                                x-transition:enter-end="opacity-100"
+                                                x-transition:leave="transition ease-in duration-100"
+                                                x-transition:leave-start="opacity-100"
+                                                x-transition:leave-end="opacity-0"
+                                                x-bind:style="submenuSide === 'right' ? 'left: 100%; padding-left: 0.5rem;' : 'right: 100%; padding-right: 0.5rem;'"
+                                                class="absolute -top-[7px] z-[160] w-64"
+                                                data-navigation-submenu
+                                            >
+                                                <div class="rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-950 shadow-xl shadow-zinc-950/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white">
+                                                    @foreach ($child['children'] as $grandchild)
+                                                        <a href="{{ $grandchild['href'] }}" @if (($grandchild['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif @class([
+                                                            'flex cursor-pointer items-center rounded-md px-3 py-2.5 text-sm font-medium transition',
+                                                            'bg-[color:var(--niva-primary-50)] text-[color:var(--niva-primary-800)] dark:bg-white/10 dark:text-white' => $grandchild['active'],
+                                                            'text-zinc-700 hover:bg-zinc-100 hover:text-[color:var(--niva-primary-800)] dark:text-zinc-200 dark:hover:bg-white/10 dark:hover:text-white' => ! $grandchild['active'],
+                                                        ])>
+                                                            <span class="min-w-0 truncate">{{ $grandchild['label'] }}</span>
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
                                 @endforeach
                             </div>
                         </div>
@@ -510,24 +550,42 @@
                                             <flux:icon name="chevron-down" class="size-4 shrink-0 text-zinc-400 transition group-open/mobile:rotate-180" />
                                         </summary>
                                         <div class="space-y-1 border-t border-zinc-200 p-1.5 dark:border-zinc-800">
-                                            <a href="{{ $item['href'] }}" x-on:click="open = false" class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 hover:text-[color:var(--niva-primary-800)] dark:text-zinc-200 dark:hover:bg-zinc-900 dark:hover:text-white">
+                                            <a href="{{ $item['href'] }}" @if (($item['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif x-on:click="open = false" class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 hover:text-[color:var(--niva-primary-800)] dark:text-zinc-200 dark:hover:bg-zinc-900 dark:hover:text-white">
                                                 <flux:icon name="arrow-right" class="size-3.5" />
                                                 <span>{{ __('Pregled: :page', ['page' => $item['label']]) }}</span>
                                             </a>
                                             @foreach ($item['children'] as $child)
-                                                <a href="{{ $child['href'] }}" x-on:click="open = false" @class([
-                                                    'flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition',
-                                                    'bg-zinc-950 text-white' => $child['active'],
-                                                    'text-zinc-700 hover:bg-zinc-100 hover:text-[color:var(--niva-primary-800)] dark:text-zinc-200 dark:hover:bg-zinc-900 dark:hover:text-white' => ! $child['active'],
-                                                ])>
-                                                    <span>{{ $child['label'] }}</span>
-                                                    <flux:icon name="chevron-right" class="size-3.5 opacity-45" />
-                                                </a>
+                                                <div>
+                                                    <a href="{{ $child['href'] }}" @if (($child['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif x-on:click="open = false" @class([
+                                                        'flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition',
+                                                        'bg-zinc-950 text-white' => $child['active'],
+                                                        'text-zinc-700 hover:bg-zinc-100 hover:text-[color:var(--niva-primary-800)] dark:text-zinc-200 dark:hover:bg-zinc-900 dark:hover:text-white' => ! $child['active'],
+                                                    ])>
+                                                        <span>{{ $child['label'] }}</span>
+                                                        @if (($child['children'] ?? []) !== [])
+                                                            <flux:icon name="chevron-down" class="size-3.5 opacity-45" />
+                                                        @endif
+                                                    </a>
+
+                                                    @if (($child['children'] ?? []) !== [])
+                                                        <div class="ml-4 border-l border-zinc-200 pl-2 dark:border-zinc-700">
+                                                            @foreach ($child['children'] as $grandchild)
+                                                                <a href="{{ $grandchild['href'] }}" @if (($grandchild['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif x-on:click="open = false" @class([
+                                                                    'flex cursor-pointer items-center rounded-lg px-3 py-2 text-[13px] font-medium transition',
+                                                                    'bg-zinc-950 text-white' => $grandchild['active'],
+                                                                    'text-zinc-600 hover:bg-zinc-100 hover:text-[color:var(--niva-primary-800)] dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white' => ! $grandchild['active'],
+                                                                ])>
+                                                                    <span>{{ $grandchild['label'] }}</span>
+                                                                </a>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
+                                                </div>
                                             @endforeach
                                         </div>
                                     </details>
                                 @else
-                                    <a href="{{ $item['href'] }}" data-section-nav-link data-active-class="" data-inactive-class="" x-on:click="open = false" @class([
+                                    <a href="{{ $item['href'] }}" @if (($item['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif data-section-nav-link data-active-class="" data-inactive-class="" x-on:click="open = false" @class([
                                         'flex cursor-pointer items-center justify-between rounded-xl px-3 py-3 text-[15px] font-semibold leading-5 transition duration-200',
                                         'bg-zinc-950 text-white shadow-sm' => $item['active'],
                                         'text-zinc-800 hover:bg-zinc-100 hover:text-[color:var(--niva-primary-800)]' => ! $item['active'],
@@ -611,7 +669,7 @@
                                 <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
                                     @foreach ($ctaItems as $cta)
                                         @php($ctaClass = $darkCtaClass($cta['variant']))
-                                        <a href="{{ $cta['href'] }}" class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
+                                        <a href="{{ $cta['href'] }}" @if (($cta['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
                                     @endforeach
                                 </div>
                             @endif
@@ -686,11 +744,11 @@
                             <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                                 @foreach ($ctaItems as $cta)
                                     @if ($cta['variant'] === 'primary')
-                                        <a href="{{ $cta['href'] }}" class="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg bg-[color:var(--niva-primary-600)] px-6 py-3 text-base font-semibold text-white shadow-sm shadow-zinc-950/20 transition duration-200 hover:bg-[color:var(--niva-primary-700)]">
+                                        <a href="{{ $cta['href'] }}" @if (($cta['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg bg-[color:var(--niva-primary-600)] px-6 py-3 text-base font-semibold text-white shadow-sm shadow-zinc-950/20 transition duration-200 hover:bg-[color:var(--niva-primary-700)]">
                                             {{ $cta['label'] }}
                                         </a>
                                     @else
-                                        <a href="{{ $cta['href'] }}" class="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-white/80 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition duration-200 hover:bg-white/12">
+                                        <a href="{{ $cta['href'] }}" @if (($cta['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-white/80 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition duration-200 hover:bg-white/12">
                                             {{ $cta['label'] }}
                                         </a>
                                     @endif
@@ -747,7 +805,7 @@
                             <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
                                 @foreach ($ctaItems as $cta)
                                     @php($ctaClass = $lightCtaClass($cta['variant']))
-                                    <a href="{{ $cta['href'] }}" class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
+                                    <a href="{{ $cta['href'] }}" @if (($cta['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
                                 @endforeach
                             </div>
                         @endif
@@ -781,7 +839,7 @@
                         <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
                             @foreach ($ctaItems as $cta)
                                 @php($ctaClass = $darkCtaClass($cta['variant']))
-                                <a href="{{ $cta['href'] }}" class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
+                                <a href="{{ $cta['href'] }}" @if (($cta['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
                             @endforeach
                         </div>
                     @endif
@@ -839,7 +897,7 @@
                         <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
                             @foreach ($ctaItems as $cta)
                                 @php($ctaClass = $lightCtaClass($cta['variant']))
-                                <a href="{{ $cta['href'] }}" class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
+                                <a href="{{ $cta['href'] }}" @if (($cta['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
                             @endforeach
                         </div>
                     @endif
@@ -889,7 +947,7 @@
                         <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
                             @foreach ($ctaItems as $cta)
                                 @php($ctaClass = $softCtaClass($cta['variant']))
-                                <a href="{{ $cta['href'] }}" class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
+                                <a href="{{ $cta['href'] }}" @if (($cta['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
                             @endforeach
                         </div>
                     @endif
@@ -939,7 +997,7 @@
                         <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                             @foreach ($ctaItems as $cta)
                                 @php($ctaClass = $primarySplitCtaClass($cta['variant']))
-                                <a href="{{ $cta['href'] }}" class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
+                                <a href="{{ $cta['href'] }}" @if (($cta['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
                             @endforeach
                         </div>
                     @endif
@@ -991,7 +1049,7 @@
                                 <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
                                     @foreach ($ctaItems as $cta)
                                         @php($ctaClass = $lightCtaClass($cta['variant']))
-                                        <a href="{{ $cta['href'] }}" class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
+                                        <a href="{{ $cta['href'] }}" @if (($cta['target'] ?? '_self') === '_blank') target="_blank" rel="noopener noreferrer" @endif class="{{ $ctaClass }}">{{ $cta['label'] }}</a>
                                     @endforeach
                                 </div>
                             @endif

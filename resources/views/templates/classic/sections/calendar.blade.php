@@ -109,7 +109,6 @@
                     :icon="$calendarEmptyIcon"
                     :title="$calendarEmptyTitle"
                     :description="$calendarEmptyDescription"
-                    align="start"
                     compact
                 />
             @else

@@ -17,7 +17,9 @@ use Illuminate\Support\Str;
 use IvanBaric\Blog\Models\Post;
 use IvanBaric\Corexis\Support\PublicEmptyStatePreview;
 use IvanBaric\Gallery\Models\Gallery;
+use IvanBaric\NivaTemplate\Concerns\InteractsWithPublicSectionCache;
 use IvanBaric\NivaTemplate\Support\NivaTemplateModels;
+use IvanBaric\NivaTemplate\Support\SocialLinks;
 use IvanBaric\Pages\Livewire\Concerns\CyclesSectionLayoutVariants;
 use IvanBaric\Pages\Livewire\Concerns\CyclesSingletonLayoutVariants;
 use IvanBaric\Pages\Models\Page;
@@ -40,6 +42,7 @@ final class GenericSection extends BaseTemplateSectionComponent
 {
     use CyclesSectionLayoutVariants;
     use CyclesSingletonLayoutVariants;
+    use InteractsWithPublicSectionCache;
 
     private const CAROUSEL_INITIAL_LIMIT = 6;
 
@@ -128,9 +131,21 @@ final class GenericSection extends BaseTemplateSectionComponent
                 return $this->carouselRecords($type);
             }
 
-            return $this->productRecordsQuery($type)
-                ->limit($this->recordsLimit($type))
-                ->get();
+            $productModel = NivaTemplateModels::product();
+
+            if ($productModel === null) {
+                return collect();
+            }
+
+            $limit = $this->recordsLimit($type);
+
+            return $this->rememberSectionModels(
+                'records.products',
+                $productModel,
+                $this->recordsCacheContext($type, $limit),
+                true,
+                fn (): EloquentCollection => $this->productRecordsQuery($type)->limit($limit)->get(),
+            );
         }
 
         if (in_array($type, ['featured_news', 'latest_news', 'taxonomy_news'], true)) {
@@ -179,10 +194,13 @@ final class GenericSection extends BaseTemplateSectionComponent
                 );
             }
 
-            return $query
-                ->ordered()
-                ->limit($limit)
-                ->get();
+            return $this->rememberSectionModels(
+                'records.posts',
+                $postModel,
+                $this->recordsCacheContext($type, $limit),
+                true,
+                fn (): EloquentCollection => $query->ordered()->limit($limit)->get(),
+            );
         }
 
         if (in_array($type, ['gallery', 'gallery_grid'], true)) {
@@ -194,9 +212,15 @@ final class GenericSection extends BaseTemplateSectionComponent
                 return $this->carouselRecords($type);
             }
 
-            return $this->galleryRecordsQuery()
-                ->limit($this->recordsLimit($type))
-                ->get();
+            $limit = $this->recordsLimit($type);
+
+            return $this->rememberSectionModels(
+                'records.galleries',
+                Gallery::class,
+                $this->recordsCacheContext($type, $limit),
+                true,
+                fn (): EloquentCollection => $this->galleryRecordsQuery()->limit($limit)->get(),
+            );
         }
 
         return collect();
@@ -215,9 +239,7 @@ final class GenericSection extends BaseTemplateSectionComponent
             return $this->carouselSectionItems('testimonials');
         }
 
-        $section = $this->sectionModel();
-
-        return $section ? $this->sectionItemsQuery()->get() : collect();
+        return $this->cachedSectionItems();
     }
 
     public function emptyStatePreviewEnabled(): bool
@@ -384,16 +406,28 @@ final class GenericSection extends BaseTemplateSectionComponent
             return null;
         }
 
-        $item = DB::table('taxonomy_items')
-            ->join('taxonomies', 'taxonomy_items.taxonomy_id', '=', 'taxonomies.id')
-            ->where('taxonomy_items.team_id', (int) $teamId)
-            ->where('taxonomies.team_id', (int) $teamId)
-            ->whereIn('taxonomies.type', $types)
-            ->where('taxonomy_items.slug', $slug)
-            ->first(['taxonomy_items.name']);
+        $item = $this->rememberSectionValue(
+            'taxonomy.active-filter',
+            [
+                'types' => $types,
+                'slug' => $slug,
+            ],
+            false,
+            function () use ($teamId, $types, $slug): ?array {
+                $item = DB::table('taxonomy_items')
+                    ->join('taxonomies', 'taxonomy_items.taxonomy_id', '=', 'taxonomies.id')
+                    ->where('taxonomy_items.team_id', (int) $teamId)
+                    ->where('taxonomies.team_id', (int) $teamId)
+                    ->whereIn('taxonomies.type', $types)
+                    ->where('taxonomy_items.slug', $slug)
+                    ->first(['taxonomy_items.name']);
+
+                return $item ? ['name' => (string) $item->name] : null;
+            },
+        );
 
         return [
-            'name' => (string) ($item?->name ?: str_replace('-', ' ', $slug)),
+            'name' => (string) (data_get($item, 'name') ?: str_replace('-', ' ', $slug)),
             'label' => $label,
             'query_key' => $queryKey,
             'clear_url' => $this->postFilterClearUrl($queryKey),
@@ -424,6 +458,34 @@ final class GenericSection extends BaseTemplateSectionComponent
         $postTable = $postInstance->getTable();
         $postMorphClass = $postInstance->getMorphClass();
 
+        $items = $this->rememberSectionValue(
+            'taxonomy.filters',
+            [
+                'types' => $types,
+                'post_table' => $postTable,
+                'post_morph_class' => $postMorphClass,
+                'time_bucket' => now()->format('YmdH'),
+            ],
+            true,
+            fn (): array => $this->postTaxonomyFilterRows($teamId, $types, $postTable, $postMorphClass),
+        );
+
+        return collect($items)
+            ->map(fn (array $item): array => [
+                'name' => $item['name'],
+                'slug' => $item['slug'],
+                'count' => $item['count'],
+                'active' => $activeSlug === $item['slug'],
+                'url' => $this->postFilterUrl($queryKey, $item['slug']),
+            ]);
+    }
+
+    /**
+     * @param  array<int, string>  $types
+     * @return array<int, array{name: string, slug: string, count: int}>
+     */
+    private function postTaxonomyFilterRows(int $teamId, array $types, string $postTable, string $postMorphClass): array
+    {
         return DB::table('taxonomy_items')
             ->join('taxonomies', 'taxonomy_items.taxonomy_id', '=', 'taxonomies.id')
             ->join('taxonomyables', 'taxonomy_items.id', '=', 'taxonomyables.taxonomy_item_id')
@@ -450,9 +512,8 @@ final class GenericSection extends BaseTemplateSectionComponent
                 'name' => (string) $item->name,
                 'slug' => (string) $item->slug,
                 'count' => (int) $item->posts_count,
-                'active' => $activeSlug === (string) $item->slug,
-                'url' => $this->postFilterUrl($queryKey, (string) $item->slug),
-            ]);
+            ])
+            ->all();
     }
 
     /**
@@ -522,7 +583,28 @@ final class GenericSection extends BaseTemplateSectionComponent
         $type = (string) data_get($this->section, 'type');
 
         return in_array($type, ['gallery', 'gallery_grid'], true)
-            && $this->galleryContentSource($type) === 'direct';
+            && in_array($this->galleryContentSource($type), ['direct', 'selected_gallery'], true);
+    }
+
+    public function activeGalleryMedia(): Collection
+    {
+        if ($this->emptyStatePreviewEnabled()) {
+            return collect();
+        }
+
+        $type = (string) data_get($this->section, 'type');
+
+        if (in_array($type, ['gallery', 'gallery_grid'], true) && $this->galleryContentSource($type) === 'selected_gallery') {
+            $gallery = $this->selectedGallery();
+
+            return $gallery?->getMedia($gallery->collection_name)->values() ?? collect();
+        }
+
+        if (method_exists($this->section, 'galleryMedia')) {
+            return $this->section->galleryMedia((string) config('gallery.default_collection', 'images'))->values();
+        }
+
+        return collect();
     }
 
     private function activeCategoryFilter(): string
@@ -587,16 +669,13 @@ final class GenericSection extends BaseTemplateSectionComponent
     private function currentPublicPageUrl(): string
     {
         $teamId = data_get($this->page, 'team_id') ?? data_get($this->section, 'team_id');
-        $pageSlug = (string) data_get($this->page, 'slug', '');
 
-        if (is_numeric($teamId) && $pageSlug !== '') {
-            $organizationSlug = $this->organizationSlug((int) $teamId);
+        if (is_numeric($teamId) && $this->page instanceof Page) {
+            $organization = $this->templateSectionOrganization((int) $teamId);
 
-            if ($organizationSlug) {
-                return app(PublicSiteUrl::class)->pageForSlug(
-                    (string) $organizationSlug,
-                    (bool) data_get($this->page, 'is_home') ? null : $pageSlug,
-                ) ?? url()->current();
+            if ($organization) {
+                return app(PublicSiteUrl::class)->page($organization, $this->page)
+                    ?? url()->current();
             }
         }
 
@@ -673,17 +752,19 @@ final class GenericSection extends BaseTemplateSectionComponent
             return null;
         }
 
-        $organizationSlug = $this->organizationSlug((int) $teamId);
+        $organization = $this->templateSectionOrganization((int) $teamId);
 
-        if (! $organizationSlug) {
+        if (! $organization) {
             return null;
         }
 
-        return app(PublicSiteUrl::class)->contentForSlug(
-            (string) $organizationSlug,
-            $pageSlug,
-            $contentSlug,
-        );
+        $page = $this->page instanceof Page && (string) $this->page->slug === $pageSlug
+            ? $this->page
+            : Page::query()->forTenant((int) $teamId)->where('slug', $pageSlug)->first();
+
+        return $page instanceof Page
+            ? app(PublicSiteUrl::class)->content($organization, $page, $contentSlug)
+            : null;
     }
 
     public function pageUrlForKey(string $pageKey): ?string
@@ -945,6 +1026,24 @@ final class GenericSection extends BaseTemplateSectionComponent
         $this->removedFromPublicPage = true;
     }
 
+    #[On('pages-public-template-part-updated.footer')]
+    public function refreshFooterBackedSocialLinks(): void
+    {
+        if ((string) data_get($this->section, 'type') !== 'social_links') {
+            return;
+        }
+
+        $teamId = $this->resolvedTeamId();
+
+        if ($teamId === null) {
+            return;
+        }
+
+        $organizations = (array) request()->attributes->get(self::ORGANIZATIONS_REQUEST_CACHE, []);
+        unset($organizations[$teamId]);
+        request()->attributes->set(self::ORGANIZATIONS_REQUEST_CACHE, $organizations);
+    }
+
     #[On('pages-public-content-source-updated')]
     public function refreshContentSource(string $source): void
     {
@@ -1000,6 +1099,18 @@ final class GenericSection extends BaseTemplateSectionComponent
         return view('niva-template::templates.classic.generic-section');
     }
 
+    /** @return array<int, array{key: string, label: string, url: string, icon: string}> */
+    public function socialLinks(): array
+    {
+        $teamId = $this->resolvedTeamId();
+
+        if ($teamId === null) {
+            return [];
+        }
+
+        return app(SocialLinks::class)->fromOrganization($this->templateSectionOrganization($teamId));
+    }
+
     /** @param array<string, mixed> $params */
     public function placeholder(array $params = []): View
     {
@@ -1053,10 +1164,22 @@ final class GenericSection extends BaseTemplateSectionComponent
             $activeColumn = (string) config('niva-template.organization.active_column', 'is_active');
             $activeValue = config('niva-template.organization.active_value', true);
 
-            $organizations[$teamId] = $model === null ? null : $model::query()
-                ->where($teamColumn, $teamId)
-                ->when($activeColumn !== '', fn (Builder $query) => $query->where($activeColumn, $activeValue))
-                ->first();
+            $organizations[$teamId] = $model === null
+                ? null
+                : $this->rememberTeamModel(
+                    'organization',
+                    $model,
+                    [
+                        'team_column' => $teamColumn,
+                        'active_column' => $activeColumn,
+                        'active_value' => $activeValue,
+                    ],
+                    false,
+                    fn (): ?Model => $model::query()
+                        ->where($teamColumn, $teamId)
+                        ->when($activeColumn !== '', fn (Builder $query) => $query->where($activeColumn, $activeValue))
+                        ->first(),
+                );
 
             request()->attributes->set(self::ORGANIZATIONS_REQUEST_CACHE, $organizations);
         }
@@ -1078,14 +1201,22 @@ final class GenericSection extends BaseTemplateSectionComponent
         $pageSlugs = request()->attributes->get(self::PAGE_SLUGS_REQUEST_CACHE, []);
 
         if (! array_key_exists($pageKey, $pageSlugs[$teamId] ?? [])) {
-            $resolved = Page::query()
-                ->forTenant($teamId)
-                ->published()
-                ->where(function (Builder $query) use ($pageKey, $slugs): void {
-                    $query->where('page_key', $pageKey)
-                        ->orWhereIn('slug', $slugs);
-                })
-                ->value('slug');
+            $resolved = $this->rememberTeamValue(
+                'content-page-slug',
+                [
+                    'page_key' => $pageKey,
+                    'slugs' => $slugs,
+                ],
+                false,
+                fn (): mixed => Page::query()
+                    ->forTenant($teamId)
+                    ->published()
+                    ->where(function (Builder $query) use ($pageKey, $slugs): void {
+                        $query->where('page_key', $pageKey)
+                            ->orWhereIn('slug', $slugs);
+                    })
+                    ->value('slug'),
+            );
 
             $pageSlugs[$teamId][$pageKey] = is_string($resolved) && $resolved !== ''
                 ? $resolved
@@ -1176,6 +1307,16 @@ final class GenericSection extends BaseTemplateSectionComponent
             return 0;
         }
 
+        return (int) $this->rememberSectionValue(
+            'records.total',
+            $this->recordsCacheContext($type),
+            true,
+            fn (): int => $this->uncachedTotalRecords($type),
+        );
+    }
+
+    private function uncachedTotalRecords(string $type): int
+    {
         $teamId = data_get($this->page, 'team_id') ?? data_get($this->section, 'team_id');
 
         if (in_array($type, ['featured_products', 'all_products'], true)) {
@@ -1251,16 +1392,30 @@ final class GenericSection extends BaseTemplateSectionComponent
         $limit = $this->carouselVisibleLimit($key);
 
         if (in_array($key, ['featured_products', 'all_products'], true)) {
-            return $this->productRecordsQuery($key)
-                ->limit($limit)
-                ->get()
+            $productModel = NivaTemplateModels::product();
+
+            if ($productModel === null) {
+                return collect();
+            }
+
+            return $this->rememberSectionModels(
+                'carousel.products',
+                $productModel,
+                $this->recordsCacheContext($key, $limit),
+                true,
+                fn (): EloquentCollection => $this->productRecordsQuery($key)->limit($limit)->get(),
+            )
                 ->map(fn (Model $product) => $this->productCarouselRecord($product));
         }
 
         if (in_array($key, ['gallery', 'gallery_grid'], true)) {
-            return $this->galleryRecordsQuery()
-                ->limit($limit)
-                ->get()
+            return $this->rememberSectionModels(
+                'carousel.galleries',
+                Gallery::class,
+                $this->recordsCacheContext($key, $limit),
+                true,
+                fn (): EloquentCollection => $this->galleryRecordsQuery()->limit($limit)->get(),
+            )
                 ->map(fn (Gallery $gallery) => $this->galleryCarouselRecord($gallery));
         }
 
@@ -1278,9 +1433,8 @@ final class GenericSection extends BaseTemplateSectionComponent
             return collect();
         }
 
-        return $this->sectionItemsQuery()
-            ->limit($this->carouselVisibleLimit($key))
-            ->get()
+        return $this->cachedSectionItems()
+            ->take($this->carouselVisibleLimit($key))
             ->map(fn (SectionItem $item) => $this->sectionItemCarouselRecord($item));
     }
 
@@ -1361,7 +1515,7 @@ final class GenericSection extends BaseTemplateSectionComponent
         }
 
         if ($this->usesSectionItemCarousel($key)) {
-            return $this->sectionItemsQuery()->count();
+            return $this->cachedSectionItems()->count();
         }
 
         if (in_array($key, ['featured_products', 'all_products', 'gallery', 'gallery_grid'], true)) {
@@ -1427,6 +1581,8 @@ final class GenericSection extends BaseTemplateSectionComponent
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at');
 
+        $source = $this->galleryContentSource((string) data_get($this->section, 'type', 'gallery'));
+        $selectedGalleryUuid = data_get($this->section, 'settings.gallery_uuid');
         $galleryUuids = collect((array) data_get($this->section, 'settings.gallery_uuids', []))
             ->filter(static fn (mixed $uuid): bool => is_string($uuid) && Str::isUuid($uuid))
             ->unique()
@@ -1434,7 +1590,45 @@ final class GenericSection extends BaseTemplateSectionComponent
             ->values()
             ->all();
 
-        return $query->when($galleryUuids !== [], fn (Builder $query) => $query->whereIn('uuid', $galleryUuids));
+        if ($source === 'selected_gallery') {
+            $galleryUuid = is_string($selectedGalleryUuid) && Str::isUuid($selectedGalleryUuid)
+                ? $selectedGalleryUuid
+                : ($galleryUuids[0] ?? null);
+
+            return $query->when(is_string($galleryUuid), fn (Builder $query) => $query->where('uuid', $galleryUuid));
+        }
+
+        return $query->when($source === 'albums' && $galleryUuids !== [], fn (Builder $query) => $query->whereIn('uuid', $galleryUuids));
+    }
+
+    private function selectedGallery(): ?Gallery
+    {
+        $teamId = $this->resolvedTeamId();
+
+        if ($teamId === null) {
+            return null;
+        }
+
+        $selectedGalleryUuid = data_get($this->section, 'settings.gallery_uuid');
+        $galleryUuids = collect((array) data_get($this->section, 'settings.gallery_uuids', []))
+            ->filter(static fn (mixed $uuid): bool => is_string($uuid) && Str::isUuid($uuid))
+            ->unique()
+            ->take(1)
+            ->values();
+        $galleryUuid = is_string($selectedGalleryUuid) && Str::isUuid($selectedGalleryUuid)
+            ? $selectedGalleryUuid
+            : $galleryUuids->first();
+
+        if (! is_string($galleryUuid)) {
+            return null;
+        }
+
+        return Gallery::query()
+            ->forTenant($teamId)
+            ->standalone()
+            ->forCollection((string) config('gallery.default_collection', 'images'))
+            ->where('uuid', $galleryUuid)
+            ->first();
     }
 
     /** @param Builder<Model> $query */
@@ -1495,7 +1689,7 @@ final class GenericSection extends BaseTemplateSectionComponent
     {
         $source = (string) data_get($this->section, 'settings.content_source', 'albums');
 
-        return in_array($source, ['albums', 'direct'], true) ? $source : 'albums';
+        return in_array($source, ['albums', 'selected_gallery', 'direct'], true) ? $source : 'albums';
     }
 
     private function usesLoadableCarousel(string $key): bool
@@ -1542,6 +1736,35 @@ final class GenericSection extends BaseTemplateSectionComponent
             ->with(['galleries.featuredMedia', 'galleries.firstMedia']);
     }
 
+    /** @return EloquentCollection<int, SectionItem> */
+    private function cachedSectionItems(): EloquentCollection
+    {
+        if ($this->sectionModel() === null) {
+            return new EloquentCollection;
+        }
+
+        return $this->rememberSectionModels(
+            'section-items',
+            PagesModels::sectionItem(),
+            [],
+            false,
+            fn (): EloquentCollection => $this->sectionItemsQuery()->get(),
+        );
+    }
+
+    /** @return array<string, mixed> */
+    private function recordsCacheContext(string $type, ?int $limit = null): array
+    {
+        return [
+            'type' => $type,
+            'limit' => $limit,
+            'settings' => (array) data_get($this->section, 'settings', []),
+            'category_filter' => $this->activeCategoryFilter(),
+            'tag_filter' => $this->activeTagFilter(),
+            'time_bucket' => now()->format('YmdH'),
+        ];
+    }
+
     /** @return Collection<int, SectionItem> */
     private function orderedCalendarEvents(): Collection
     {
@@ -1549,8 +1772,7 @@ final class GenericSection extends BaseTemplateSectionComponent
             return collect();
         }
 
-        $section = $this->sectionModel();
-        $items = $section ? $this->sectionItemsQuery()->get() : collect();
+        $items = $this->cachedSectionItems();
 
         return $items
             ->filter(fn ($item): bool => $this->calendarDate(data_get($item, 'settings.event_date')) instanceof Carbon)

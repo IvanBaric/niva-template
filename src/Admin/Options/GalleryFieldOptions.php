@@ -28,11 +28,14 @@ final class GalleryFieldOptions implements FieldOptionsProvider
             ->forTenant((int) $teamId)
             ->standalone()
             ->forCollection((string) config('gallery.default_collection', 'images'))
+            ->select(['id', 'uuid', 'title', 'description'])
+            ->withCount('media')
             ->orderBy('title')
-            ->get(['uuid', 'title', 'description'])
+            ->get()
             ->map(static fn (Gallery $gallery): array => [
                 'value' => (string) $gallery->getAttribute('uuid'),
                 'label' => $gallery->displayTitle(),
+                'count' => (int) $gallery->getAttribute('media_count'),
                 'description' => (string) ($gallery->getAttribute('description') ?? ''),
                 'group_key' => 'galleries',
                 'group_label' => __('Dostupne galerije'),

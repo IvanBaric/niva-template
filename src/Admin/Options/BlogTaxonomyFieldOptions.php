@@ -6,6 +6,7 @@ namespace IvanBaric\NivaTemplate\Admin\Options;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use IvanBaric\Blog\Support\BlogModels;
 use IvanBaric\Pages\Admin\Contracts\FieldOptionsProvider;
 use IvanBaric\Pages\Admin\Field;
 use IvanBaric\Taxonomy\Support\TaxonomyModels;
@@ -24,17 +25,16 @@ final class BlogTaxonomyFieldOptions implements FieldOptionsProvider
 
         $taxonomiesTable = TaxonomyModels::taxonomiesTable();
         $itemsTable = TaxonomyModels::taxonomyItemsTable();
+        $taxonomyablesTable = TaxonomyModels::taxonomyablesTable();
+        $postModel = BlogModels::post();
+        $postMorphClass = (new $postModel)->getMorphClass();
 
         return DB::table($itemsTable)
             ->join($taxonomiesTable, $itemsTable.'.taxonomy_id', '=', $taxonomiesTable.'.id')
             ->where($itemsTable.'.team_id', (int) $teamId)
             ->where($taxonomiesTable.'.team_id', (int) $teamId)
             ->whereIn($taxonomiesTable.'.type', ['category', 'tags'])
-            ->orderBy($taxonomiesTable.'.type')
-            ->orderBy($taxonomiesTable.'.name')
-            ->orderBy($itemsTable.'.position')
-            ->orderBy($itemsTable.'.name')
-            ->get([
+            ->select([
                 $itemsTable.'.uuid as value',
                 $itemsTable.'.name as label',
                 $itemsTable.'.description',
@@ -43,9 +43,23 @@ final class BlogTaxonomyFieldOptions implements FieldOptionsProvider
                 $taxonomiesTable.'.description as group_description',
                 $taxonomiesTable.'.type as group_type',
             ])
+            ->selectSub(
+                DB::table($taxonomyablesTable)
+                    ->selectRaw('COUNT(DISTINCT '.$taxonomyablesTable.'.taxonomyable_id)')
+                    ->whereColumn($taxonomyablesTable.'.taxonomy_item_id', $itemsTable.'.id')
+                    ->where($taxonomyablesTable.'.taxonomyable_type', $postMorphClass)
+                    ->where($taxonomyablesTable.'.team_id', (int) $teamId),
+                'records_count',
+            )
+            ->orderBy($taxonomiesTable.'.type')
+            ->orderBy($taxonomiesTable.'.name')
+            ->orderBy($itemsTable.'.position')
+            ->orderBy($itemsTable.'.name')
+            ->get()
             ->map(static fn (object $option): array => [
                 'value' => (string) $option->value,
                 'label' => (string) $option->label,
+                'count' => (int) $option->records_count,
                 'description' => (string) ($option->description ?? ''),
                 'group_key' => (string) $option->group_key,
                 'group_label' => (string) $option->group_label,

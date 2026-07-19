@@ -44,4 +44,15 @@ return [
         'templates' => true,
         'admin_sections' => true,
     ],
+
+    'public_section_cache' => [
+        'enabled' => env('NIVA_PUBLIC_SECTION_CACHE', env('APP_ENV') !== 'testing'),
+        'store' => env('NIVA_PUBLIC_SECTION_CACHE_STORE'),
+        'namespace' => env('NIVA_PUBLIC_SECTION_CACHE_NAMESPACE', 'niva-public-sections'),
+        'schema_version' => 1,
+        'static_ttl' => (int) env('NIVA_PUBLIC_SECTION_CACHE_STATIC_TTL', 31_536_000),
+        'dynamic_ttl' => (int) env('NIVA_PUBLIC_SECTION_CACHE_DYNAMIC_TTL', 3_600),
+        'lock_seconds' => (int) env('NIVA_PUBLIC_SECTION_CACHE_LOCK_SECONDS', 10),
+        'lock_wait_seconds' => (int) env('NIVA_PUBLIC_SECTION_CACHE_LOCK_WAIT_SECONDS', 3),
+    ],
 ];
