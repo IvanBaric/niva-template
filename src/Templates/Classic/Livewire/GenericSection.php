@@ -19,7 +19,6 @@ use IvanBaric\Corexis\Support\PublicEmptyStatePreview;
 use IvanBaric\Gallery\Models\Gallery;
 use IvanBaric\NivaTemplate\Concerns\InteractsWithPublicSectionCache;
 use IvanBaric\NivaTemplate\Support\NivaTemplateModels;
-use IvanBaric\NivaTemplate\Support\SocialLinks;
 use IvanBaric\Pages\Livewire\Concerns\CyclesSectionLayoutVariants;
 use IvanBaric\Pages\Livewire\Concerns\CyclesSingletonLayoutVariants;
 use IvanBaric\Pages\Models\Page;
@@ -1026,24 +1025,6 @@ final class GenericSection extends BaseTemplateSectionComponent
         $this->removedFromPublicPage = true;
     }
 
-    #[On('pages-public-template-part-updated.footer')]
-    public function refreshFooterBackedSocialLinks(): void
-    {
-        if ((string) data_get($this->section, 'type') !== 'social_links') {
-            return;
-        }
-
-        $teamId = $this->resolvedTeamId();
-
-        if ($teamId === null) {
-            return;
-        }
-
-        $organizations = (array) request()->attributes->get(self::ORGANIZATIONS_REQUEST_CACHE, []);
-        unset($organizations[$teamId]);
-        request()->attributes->set(self::ORGANIZATIONS_REQUEST_CACHE, $organizations);
-    }
-
     #[On('pages-public-content-source-updated')]
     public function refreshContentSource(string $source): void
     {
@@ -1097,18 +1078,6 @@ final class GenericSection extends BaseTemplateSectionComponent
         }
 
         return view('niva-template::templates.classic.generic-section');
-    }
-
-    /** @return array<int, array{key: string, label: string, url: string, icon: string}> */
-    public function socialLinks(): array
-    {
-        $teamId = $this->resolvedTeamId();
-
-        if ($teamId === null) {
-            return [];
-        }
-
-        return app(SocialLinks::class)->fromOrganization($this->templateSectionOrganization($teamId));
     }
 
     /** @param array<string, mixed> $params */

@@ -4,7 +4,7 @@
             @else
             @php
                 $galleryLayout = (string) data_get($section, 'settings.layout_variant', 'cards');
-                $galleryLayout = in_array($galleryLayout, ['cards', 'text_cards', 'masonry', 'featured', 'wall', 'journal', 'carousel'], true) ? $galleryLayout : 'cards';
+                $galleryLayout = in_array($galleryLayout, ['cards', 'text_cards', 'masonry', 'featured', 'wall', 'journal', 'carousel', 'curated_focus'], true) ? $galleryLayout : 'cards';
                 $galleryCarouselName = 'gallery-carousel-'.(string) data_get($section, 'uuid', data_get($section, 'id', 'section'));
                 $galleryCarouselHasMore = $galleryLayout === 'carousel' && $this->hasMoreCarouselItems($type);
                 $galleryEntries = collect();
@@ -54,6 +54,7 @@
                             'title' => $item->localized('title'),
                             'description' => $item->localized('description') ?: $item->localized('content'),
                             'image' => method_exists($item, 'imageUrl') ? $item->imageUrl('thumb') : $assetUrl(data_get($item, 'image')),
+                            'image_large' => method_exists($item, 'imageUrl') ? $item->imageUrl('large') : $assetUrl(data_get($item, 'image')),
                             'url' => null,
                             'count' => null,
                             'count_label' => null,
@@ -70,6 +71,89 @@
                     :title="__('Galerija je spremna za prve fotografije.')"
                     :description="__('Albumi i fotografije prikazat će se ovdje kada budu spremni za objavu.')"
                 />
+            @elseif ($galleryLayout === 'curated_focus')
+                <div class="cx-public-section-content" x-data="{ active: 0 }">
+                    <div class="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-12">
+                        <div class="min-w-0 border-b border-zinc-200 pb-6 dark:border-zinc-800 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8">
+                            <div class="flex gap-3 overflow-x-auto pb-1 lg:grid lg:gap-2 lg:overflow-visible" role="tablist" aria-label="{{ __('Albumi u galeriji') }}">
+                                @foreach ($galleryEntries as $entry)
+                                    @php
+                                        $entryTitle = (string) data_get($entry, 'title');
+                                        $entryCountLabel = data_get($entry, 'count_label');
+                                    @endphp
+                                    <button
+                                        type="button"
+                                        role="tab"
+                                        x-on:click="active = {{ $loop->index }}"
+                                        x-bind:aria-selected="(active === {{ $loop->index }}).toString()"
+                                        aria-controls="gallery-curated-panel-{{ data_get($section, 'uuid', data_get($section, 'id', 'section')) }}-{{ $loop->index }}"
+                                        x-bind:class="active === {{ $loop->index }} ? 'border-[color:var(--niva-primary)] text-zinc-950 dark:text-white' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'"
+                                        class="min-w-[13rem] cursor-pointer border-l-2 py-2.5 pl-4 pr-3 text-left transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--niva-primary)] lg:min-w-0"
+                                    >
+                                        <span class="min-w-0">
+                                            <span class="block truncate text-sm font-semibold text-current">{{ $entryTitle }}</span>
+                                            @if ($entryCountLabel)
+                                                <span class="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">{{ $entryCountLabel }}</span>
+                                            @endif
+                                        </span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="min-w-0">
+                            @foreach ($galleryEntries as $entry)
+                                @php
+                                    $entryTitle = (string) data_get($entry, 'title');
+                                    $entryDescriptionSource = data_get($entry, 'description');
+                                    $entryDescription = filled($entryDescriptionSource) ? str((string) $entryDescriptionSource)->stripTags()->squish()->limit(190)->toString() : null;
+                                    $entryImage = data_get($entry, 'image_large') ?: data_get($entry, 'image');
+                                    $entryUrl = data_get($entry, 'url');
+                                    $entryCountLabel = data_get($entry, 'count_label');
+                                    $panelId = 'gallery-curated-panel-'.data_get($section, 'uuid', data_get($section, 'id', 'section')).'-'.$loop->index;
+                                @endphp
+
+                                <article
+                                    id="{{ $panelId }}"
+                                    role="tabpanel"
+                                    x-show="active === {{ $loop->index }}"
+                                    x-transition:enter="transition ease-out duration-300"
+                                    x-transition:enter-start="opacity-0 translate-y-2"
+                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                    @if (! $loop->first) x-cloak @endif
+                                    class="h-full"
+                                    wire:key="gallery-curated-panel-{{ data_get($entry, 'id', $loop->index) }}"
+                                >
+                                    <a href="{{ $entryUrl ?: '#' }}" title="{{ $entryTitle }}" aria-label="{{ __('Otvori album :title', ['title' => $entryTitle]) }}" @class([
+                                        'group block cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--niva-primary)]',
+                                        'pointer-events-none' => ! $entryUrl,
+                                    ])>
+                                        <figure class="aspect-[16/10] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-900 lg:aspect-[16/9]">
+                                            @if ($entryImage)
+                                                <img src="{{ $entryImage }}" alt="{{ $entryTitle }}" class="size-full object-cover transition duration-700 ease-out group-hover:scale-[1.025]" loading="lazy" decoding="async">
+                                            @else
+                                                <x-corexis::public-image-placeholder class="size-full" icon="photo" icon-class="size-10" />
+                                            @endif
+
+                                        </figure>
+
+                                        <div class="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+                                            @if ($entryCountLabel)
+                                                <p class="mb-2 cx-public-meta text-zinc-500 dark:text-zinc-400">{{ $entryCountLabel }}</p>
+                                            @endif
+                                            <div class="min-w-0">
+                                                <h3 class="text-2xl font-semibold tracking-tight text-zinc-950 transition duration-200 group-hover:text-[color:var(--niva-primary-800)] dark:text-white sm:text-3xl">{{ $entryTitle }}</h3>
+                                                @if ($entryDescription)
+                                                    <p class="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-300 sm:text-base sm:leading-7">{{ $entryDescription }}</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </a>
+                                </article>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
             @elseif ($galleryLayout === 'carousel')
                 <div class="mt-6">
                         @if ($galleryEntries->count() > 1 || $galleryCarouselHasMore)
@@ -82,16 +166,19 @@
 
                         <flux:carousel name="{{ $galleryCarouselName }}" class="-mx-4" :arrows="false" fade advance="page" track:class="px-4 scroll-px-4">
                             @foreach ($galleryEntries as $entry)
+                                @php
+                                    $entryImage = data_get($entry, 'image_large') ?: data_get($entry, 'image');
+                                @endphp
                                 <flux:carousel.slide class="w-4/5 sm:w-1/2 lg:w-1/3" wire:key="gallery-carousel-{{ data_get($entry, 'id', $loop->index) }}">
                                     <a href="{{ $entry['url'] ?: '#' }}" title="{{ $entry['title'] }}" aria-label="{{ $entry['title'] }}" @class([
                                         'group flex h-full cursor-pointer flex-col overflow-hidden cx-public-surface cx-public-card-hover focus:outline-none focus:ring-2 focus:ring-[color:var(--niva-primary)] focus:ring-offset-2 focus:ring-offset-white dark:bg-zinc-950 dark:ring-zinc-800 dark:shadow-black/20 dark:focus:ring-offset-zinc-950',
                                         'pointer-events-none' => ! $entry['url'],
                                     ])>
                                         <div class="overflow-hidden bg-zinc-100 dark:bg-zinc-900">
-                                            @if ($entry['image'])
-                                                <img src="{{ $entry['image'] }}" alt="" class="aspect-[4/3] w-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
+                                            @if ($entryImage)
+                                                <img src="{{ $entryImage }}" alt="" class="aspect-[16/10] w-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
                                             @else
-                                                <x-corexis::public-image-placeholder class="aspect-[4/3] w-full" icon="photo" />
+                                                <x-corexis::public-image-placeholder class="aspect-[16/10] w-full" icon="photo" />
                                             @endif
                                         </div>
 
@@ -171,7 +258,7 @@
                     @foreach ($galleryEntries as $entry)
                         @php
                             $entryTitle = (string) data_get($entry, 'title');
-                            $entryImage = data_get($entry, 'image');
+                            $entryImage = data_get($entry, 'image_large') ?: data_get($entry, 'image');
                             $entryUrl = data_get($entry, 'url');
                             $entryCountLabel = data_get($entry, 'count_label');
                             $entryRatio = $masonryRatios[$loop->index % count($masonryRatios)];
@@ -205,7 +292,9 @@
                 @endphp
 
                 @if ($featuredGallery)
-                    @php($featuredGalleryImage = data_get($featuredGallery, 'image_large') ?: data_get($featuredGallery, 'image'))
+                    @php
+                        $featuredGalleryImage = data_get($featuredGallery, 'image_large') ?: data_get($featuredGallery, 'image');
+                    @endphp
                     <div class="cx-public-section-content-spacious">
                         <div class="grid gap-7 lg:grid-cols-[minmax(0,1.28fr)_minmax(0,0.92fr)] lg:items-start">
                             <a href="{{ $featuredGallery['url'] ?: '#' }}" title="{{ $featuredGallery['title'] }}" aria-label="{{ $featuredGallery['title'] }}" @class([
@@ -230,13 +319,16 @@
                             @if ($sideGalleries->isNotEmpty())
                                 <div class="grid gap-7">
                                     @foreach ($sideGalleries as $entry)
+                                        @php
+                                            $entryImage = data_get($entry, 'image_large') ?: data_get($entry, 'image');
+                                        @endphp
                                         <a href="{{ $entry['url'] ?: '#' }}" title="{{ $entry['title'] }}" aria-label="{{ $entry['title'] }}" @class([
                                             'group block cursor-pointer rounded-xl transition duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[color:var(--niva-primary)] focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950',
                                             'pointer-events-none' => ! $entry['url'],
                                         ])>
                                             <figure class="overflow-hidden rounded-xl bg-zinc-100 shadow-sm shadow-zinc-950/5 transition duration-200 dark:bg-zinc-900 dark:shadow-black/20">
-                                                @if ($entry['image'])
-                                                    <img src="{{ $entry['image'] }}" alt="" class="aspect-[16/8] w-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
+                                                @if ($entryImage)
+                                                    <img src="{{ $entryImage }}" alt="" class="aspect-[16/8] w-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
                                                 @else
                                                     <x-corexis::public-image-placeholder class="aspect-[16/8] w-full" icon="photo" />
                                                 @endif
@@ -256,13 +348,16 @@
                         @if ($remainingGalleries->isNotEmpty())
                             <div class="cx-public-section-content-compact grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach ($remainingGalleries as $entry)
+                                    @php
+                                        $entryImage = data_get($entry, 'image_large') ?: data_get($entry, 'image');
+                                    @endphp
                                     <a href="{{ $entry['url'] ?: '#' }}" title="{{ $entry['title'] }}" aria-label="{{ $entry['title'] }}" @class([
                                         'group block cursor-pointer rounded-xl transition duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[color:var(--niva-primary)] focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950',
                                         'pointer-events-none' => ! $entry['url'],
                                     ])>
                                         <figure class="overflow-hidden rounded-xl bg-zinc-100 shadow-sm shadow-zinc-950/5 transition duration-200 dark:bg-zinc-900 dark:shadow-black/20">
-                                            @if ($entry['image'])
-                                                <img src="{{ $entry['image'] }}" alt="" class="aspect-[4/3] w-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
+                                            @if ($entryImage)
+                                                <img src="{{ $entryImage }}" alt="" class="aspect-[4/3] w-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
                                             @else
                                                 <x-corexis::public-image-placeholder class="aspect-[4/3] w-full" icon="photo" />
                                             @endif
@@ -283,12 +378,15 @@
                 <div class="cx-public-section-content cx-public-surface-band cx-public-band-padding dark:bg-zinc-900/80">
                     <div class="cx-public-grid sm:grid-cols-2 lg:grid-cols-3">
                         @foreach ($galleryEntries as $entry)
+                            @php
+                                $entryImage = data_get($entry, 'image_large') ?: data_get($entry, 'image');
+                            @endphp
                             <a href="{{ $entry['url'] ?: '#' }}" title="{{ $entry['title'] }}" aria-label="{{ $entry['title'] }}" @class([
                                 'group relative min-h-72 cursor-pointer overflow-hidden rounded-xl bg-zinc-100 shadow-sm shadow-zinc-950/10 cx-public-card-hover focus:outline-none focus:ring-2 focus:ring-[color:var(--niva-primary)] focus:ring-offset-2 focus:ring-offset-white dark:bg-zinc-900 dark:shadow-black/20 dark:focus:ring-offset-zinc-950',
                                 'pointer-events-none' => ! $entry['url'],
                             ])>
-                                @if ($entry['image'])
-                                    <img src="{{ $entry['image'] }}" alt="" class="absolute inset-0 size-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
+                                @if ($entryImage)
+                                    <img src="{{ $entryImage }}" alt="" class="absolute inset-0 size-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
                                 @else
                                     <x-corexis::public-image-placeholder class="absolute inset-0 size-full" icon="photo" icon-class="size-10" />
                                 @endif
@@ -312,13 +410,16 @@
             @elseif ($galleryLayout === 'journal')
                 <div class="cx-public-section-content cx-public-stack">
                     @foreach ($galleryEntries as $entry)
+                        @php
+                            $entryImage = data_get($entry, 'image_large') ?: data_get($entry, 'image');
+                        @endphp
                         <a href="{{ $entry['url'] ?: '#' }}" title="{{ $entry['title'] }}" aria-label="{{ $entry['title'] }}" @class([
                             'group grid cursor-pointer gap-4 cx-public-surface-plain cx-public-card-padding-compact cx-public-card-hover focus:outline-none focus:ring-2 focus:ring-[color:var(--niva-primary)] focus:ring-offset-2 focus:ring-offset-white dark:bg-zinc-950 dark:shadow-black/20 dark:focus:ring-offset-zinc-950 sm:grid-cols-[12rem_1fr] sm:items-center',
                             'pointer-events-none' => ! $entry['url'],
                         ])>
                             <div class="overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-900">
-                                @if ($entry['image'])
-                                    <img src="{{ $entry['image'] }}" alt="" class="aspect-[4/3] w-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
+                                @if ($entryImage)
+                                    <img src="{{ $entryImage }}" alt="" class="aspect-[4/3] w-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
                                 @else
                                     <x-corexis::public-image-placeholder class="aspect-[4/3] w-full" icon="photo" icon-class="size-8" />
                                 @endif
@@ -340,24 +441,39 @@
             @else
                 <div class="cx-public-section-content cx-public-grid sm:grid-cols-2 lg:grid-cols-3">
                     @foreach ($galleryEntries as $entry)
-                        <a href="{{ $entry['url'] ?: '#' }}" title="{{ $entry['title'] }}" aria-label="{{ $entry['title'] }}" @class([
-                            'group flex h-full cursor-pointer flex-col overflow-hidden cx-public-surface cx-public-card-hover focus:outline-none focus:ring-2 focus:ring-[color:var(--niva-primary)] focus:ring-offset-2 focus:ring-offset-white dark:bg-zinc-950 dark:ring-zinc-800 dark:shadow-black/20 dark:focus:ring-offset-zinc-950',
-                            'pointer-events-none' => ! $entry['url'],
+                        @php
+                            $entryTitle = (string) data_get($entry, 'title');
+                            $entryDescriptionSource = data_get($entry, 'description');
+                            $entryDescription = filled($entryDescriptionSource) ? str((string) $entryDescriptionSource)->stripTags()->squish()->limit(100)->toString() : null;
+                            $entryImage = data_get($entry, 'image_large') ?: data_get($entry, 'image');
+                            $entryUrl = data_get($entry, 'url');
+                            $entryCountLabel = data_get($entry, 'count_label');
+                        @endphp
+
+                        <a href="{{ $entryUrl ?: '#' }}" title="{{ $entryTitle }}" aria-label="{{ $entryTitle }}" @class([
+                            'group flex h-full cursor-pointer flex-col overflow-hidden cx-public-surface cx-public-focus',
+                            'cx-public-card-hover' => $entryUrl,
+                            'pointer-events-none' => ! $entryUrl,
                         ])>
-                            @if ($entry['image'])
-                                <img src="{{ $entry['image'] }}" alt="" class="aspect-[4/3] w-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
-                            @else
-                                <x-corexis::public-image-placeholder class="aspect-[4/3] w-full" icon="photo" />
-                            @endif
-                            <div class="flex flex-1 flex-col p-5">
-                                <div class="flex items-start justify-between gap-4">
-                                    <h3 class="cx-public-item-title-compact text-zinc-950 transition group-hover:text-[color:var(--niva-primary-800)] dark:text-white dark:group-hover:text-[color:var(--niva-primary-200)]">{{ $entry['title'] }}</h3>
-                                    @if ($entry['count_label'])
-                                        <span class="shrink-0 cx-public-badge-sm">{{ $entry['count_label'] }}</span>
+                            <figure class="aspect-[4/3] overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                                @if ($entryImage)
+                                    <img src="{{ $entryImage }}" alt="{{ $entryTitle }}" class="size-full object-cover cx-public-image-zoom" loading="lazy" decoding="async">
+                                @else
+                                    <x-corexis::public-image-placeholder class="size-full" icon="photo" />
+                                @endif
+                            </figure>
+
+                            <div class="flex flex-1 items-start justify-between gap-4 p-5">
+                                <div class="min-w-0">
+                                    <h3 class="cx-public-item-title-compact text-zinc-950 cx-public-motion-color group-hover:text-[color:var(--niva-primary-800)] dark:text-white dark:group-hover:text-[color:var(--niva-primary-200)]">{{ $entryTitle }}</h3>
+
+                                    @if ($entryDescription)
+                                        <p class="mt-2 line-clamp-2 cx-public-item-text text-zinc-600 dark:text-zinc-300">{{ $entryDescription }}</p>
                                     @endif
                                 </div>
-                                @if ($entry['description'])
-                                    <p class="mt-3 flex-1 cx-public-item-text text-zinc-600 dark:text-zinc-300">{{ $entry['description'] }}</p>
+
+                                @if ($entryCountLabel)
+                                    <span class="shrink-0 cx-public-badge-sm">{{ $entryCountLabel }}</span>
                                 @endif
                             </div>
                         </a>

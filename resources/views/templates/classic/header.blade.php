@@ -93,7 +93,7 @@
                 :mobile-sources="$mobileImageUrl ? $mobileHeaderImageSources : []"
                 :mobile-media="$mobileImageMedia"
                 alt=""
-                img-class="size-full object-cover {{ $mobileImageObjectClass }} [filter:saturate(1.08)_contrast(1.03)_brightness(1.03)]"
+                img-class="size-full object-cover {{ $mobileImageObjectClass }} [filter:saturate(1.08)_contrast(1.03)_brightness(1)]"
                 class="absolute inset-0 -z-20 block size-full"
                 loading="eager"
                 fetchpriority="high"
@@ -128,7 +128,7 @@
     @endif
 
     @if ($this->small && ! $usesImageBandHeader)
-        <div class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.08)_46%,rgba(9,9,11,0.18)_100%)]"></div>
+        <div class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(9,9,11,0.18)_0%,rgba(9,9,11,0.08)_46%,rgba(9,9,11,0.24)_100%)]"></div>
     @elseif ($isHeroHeader)
         <div class="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(9,9,11,0.38)_0%,rgba(9,9,11,0.16)_44%,rgba(9,9,11,0.03)_100%)]"></div>
         <div class="absolute inset-x-0 bottom-0 -z-10 h-2/3 bg-[linear-gradient(0deg,rgba(9,9,11,0.34)_0%,rgba(9,9,11,0.08)_58%,rgba(9,9,11,0)_100%)]"></div>

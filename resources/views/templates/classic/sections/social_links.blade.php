@@ -1,12 +1,9 @@
         <?php if ($type === 'social_links') { ?>
             @php
                 $socialLinksResolver = app(\IvanBaric\NivaTemplate\Support\SocialLinks::class);
-                $sharedSocialLinks = collect($this->socialLinks());
                 $itemSocialLinks = collect($socialLinksResolver->fromSectionItems($items));
                 $legacySocialLinks = collect($socialLinksResolver->fromLegacySettings((array) $section->settings));
-                $socialLinks = $sharedSocialLinks->isNotEmpty()
-                    ? $sharedSocialLinks
-                    : ($itemSocialLinks->isNotEmpty() ? $itemSocialLinks : $legacySocialLinks);
+                $socialLinks = $itemSocialLinks->isNotEmpty() ? $itemSocialLinks : $legacySocialLinks;
                 $socialLayout = (string) data_get($section->settings, 'layout_variant', 'cards');
                 $socialLayout = in_array($socialLayout, ['cards', 'strip', 'icons'], true) ? $socialLayout : 'cards';
             @endphp

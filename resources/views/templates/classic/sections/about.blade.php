@@ -16,7 +16,7 @@
                 $sectionImage = $assetUrl($itemImage ?: $legacyImage);
                 $aboutImageSlot = $sectionImage || $hasAboutCopy;
                 $aboutImageIcon = 'photo';
-                $sectionParagraphs = $sectionText ? (preg_split('/\R{2,}|\n/', trim($sectionText)) ?: []) : [];
+                $sectionParagraphs = $sectionText ? (preg_split('/\R+/', trim($sectionText)) ?: []) : [];
             @endphp
 
             @if (! $hasAboutCopy && ! $sectionImage)
@@ -121,7 +121,7 @@
                                     <path d="M0.04 0 H0.96 C0.985 0 1 0.018 0.995 0.045 L0.914 0.445 C0.906 0.475 0.906 0.505 0.914 0.535 L0.995 0.955 C1 0.982 0.985 1 0.96 1 H0.04 C0.018 1 0 0.982 0 0.96 V0.04 C0 0.018 0.018 0 0.04 0 Z" />
                                 </clipPath>
                             </svg>
-                            <figure class="relative h-[430px] w-full overflow-hidden sm:h-[450px] lg:h-[460px]" style="-webkit-clip-path: url(#{{ $clipId }}); clip-path: url(#{{ $clipId }});">
+                            <figure class="relative aspect-[4/3] w-full overflow-hidden" style="-webkit-clip-path: url(#{{ $clipId }}); clip-path: url(#{{ $clipId }});">
                                 @if ($sectionImage)
                                     <img src="{{ $sectionImage }}" alt="" class="h-full w-full object-cover object-center" loading="lazy" decoding="async">
                                 @else
@@ -190,45 +190,42 @@
                         @endif
                     </div>
                 @elseif ($aboutLayout === 'editorial_frame')
-                    <div class="cx-public-section-content-spacious">
-                        @if ($aboutImageSlot || $sectionStatement !== '')
-                            <div class="relative lg:grid lg:grid-cols-12 lg:items-center">
-                                @if ($aboutImageSlot)
-                                    <figure @class([
-                                        'cx-public-mobile-bleed overflow-hidden bg-zinc-100 sm:rounded-xl dark:bg-zinc-900 lg:row-start-1',
-                                        'lg:col-span-9 lg:col-start-4' => $sectionStatement !== '',
-                                        'lg:col-span-11 lg:col-start-2' => $sectionStatement === '',
-                                    ])>
-                                        @if ($sectionImage)
-                                            <img src="{{ $sectionImage }}" alt="" class="aspect-[4/3] w-full object-cover sm:aspect-[16/9]" loading="lazy" decoding="async">
-                                        @else
-                                            <x-corexis::public-image-placeholder class="aspect-[4/3] w-full sm:aspect-[16/9]" :icon="$aboutImageIcon" icon-class="size-12" />
-                                        @endif
-                                    </figure>
+                    <div @class([
+                        'cx-public-section-content-spacious mx-auto max-w-5xl grid gap-8 lg:items-center lg:gap-10',
+                        'lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]' => $aboutImageSlot && $sectionText,
+                    ])>
+                        @if ($aboutImageSlot)
+                            <figure class="cx-public-mobile-bleed relative overflow-hidden bg-zinc-900 sm:rounded-xl">
+                                @if ($sectionImage)
+                                    <img src="{{ $sectionImage }}" alt="" class="aspect-[4/3] w-full object-cover" loading="lazy" decoding="async">
+                                @else
+                                    <x-corexis::public-image-placeholder class="aspect-[4/3] w-full" :icon="$aboutImageIcon" icon-class="size-12" />
                                 @endif
 
                                 @if ($sectionStatement !== '')
-                                    <div @class([
-                                        'relative z-10 mx-5 -mt-7 rounded-lg bg-[color:var(--niva-primary-50)] p-6 shadow-sm shadow-zinc-950/10 ring-1 ring-[color:var(--niva-primary-100)]/70 dark:bg-[color:var(--niva-primary-950)] dark:shadow-black/25 dark:ring-[color:var(--niva-primary-900)]/60 sm:mx-8 sm:p-8 lg:col-span-5 lg:col-start-1 lg:row-start-1 lg:m-0 lg:p-9',
-                                        'lg:col-span-8 lg:col-start-3' => ! $aboutImageSlot,
-                                    ])>
-                                        <p class="cx-public-quote-featured whitespace-pre-line text-zinc-950 dark:text-zinc-100">{{ $sectionStatement }}</p>
+                                    <div class="absolute inset-x-0 bottom-0 bg-zinc-950/75 px-5 py-4 backdrop-blur-[2px] sm:px-6 sm:py-5">
+                                        <p class="max-w-xl border-l-2 border-[color:var(--niva-primary-200)] pl-4 text-lg font-medium leading-relaxed tracking-tight text-white sm:text-xl">{{ $sectionStatement }}</p>
                                     </div>
                                 @endif
-                            </div>
+                            </figure>
                         @endif
 
                         @if ($sectionText)
                             <div @class([
-                                'mx-auto max-w-4xl cx-public-stack-loose cx-public-body text-zinc-700 dark:text-zinc-300 [&_p]:mb-5 [&_p:last-child]:mb-0',
-                                'mt-8 sm:mt-10' => $aboutImageSlot || $sectionStatement !== '',
-                                'md:columns-2 md:gap-12' => count(array_filter($sectionParagraphs, fn ($paragraph) => trim($paragraph) !== '')) > 1,
+                                'border-t border-zinc-200 pt-6 cx-public-body text-zinc-700 dark:border-zinc-800 dark:text-zinc-300 [&_p]:mb-5 [&_p:last-child]:mb-0',
+                                'lg:col-span-2' => ! $aboutImageSlot,
                             ])>
                                 @foreach ($sectionParagraphs as $paragraph)
                                     @if (trim($paragraph) !== '')
                                         <p>{{ trim($paragraph) }}</p>
                                     @endif
                                 @endforeach
+                            </div>
+                        @endif
+
+                        @if (! $aboutImageSlot && $sectionStatement !== '')
+                            <div class="border-l-2 border-[color:var(--niva-primary-300)] pl-5 sm:pl-6">
+                                <p class="cx-public-quote-featured whitespace-pre-line text-zinc-950 dark:text-zinc-100">{{ $sectionStatement }}</p>
                             </div>
                         @endif
                     </div>

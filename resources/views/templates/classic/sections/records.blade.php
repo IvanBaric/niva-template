@@ -3,7 +3,7 @@
                 $displayRecords = $records->isNotEmpty() ? $records : $items;
                 $isNewsSection = in_array($type, ['featured_news', 'latest_news', 'taxonomy_news'], true);
                 $newsLayout = (string) data_get($section, 'settings.layout_variant', 'cards');
-                $newsLayout = in_array($newsLayout, ['cards', 'featured', 'stacked', 'journal', 'blog_grid', 'image_cards', 'editorial_list'], true) ? $newsLayout : 'cards';
+                $newsLayout = in_array($newsLayout, ['cards', 'featured', 'stacked', 'journal', 'blog_grid', 'image_cards', 'editorial_list', 'magazine_cover'], true) ? $newsLayout : 'cards';
                 $newsReadMoreLabel = trim((string) data_get($section, 'settings.read_more_label', ''));
                 $newsReadMoreLabel = $newsReadMoreLabel !== '' ? $newsReadMoreLabel : __('Pročitaj objavu');
                 $showNewsAuthor = (bool) data_get($section, 'settings.show_author', false);
@@ -57,7 +57,7 @@
                     return $meta;
                 };
                 $productLayout = (string) data_get($section, 'settings.layout_variant', 'cards');
-                $productLayout = in_array($productLayout, ['cards', 'highlighted', 'showcase', 'catalog', 'carousel', 'store_grid', 'scroll_showcase'], true) ? $productLayout : 'cards';
+                $productLayout = in_array($productLayout, ['cards', 'highlighted', 'showcase', 'catalog', 'carousel', 'store_grid', 'scroll_showcase', 'editorial_flow'], true) ? $productLayout : 'cards';
                 $productCarouselName = 'products-carousel-'.(string) data_get($section, 'uuid', data_get($section, 'id', 'section'));
                 $hideLoadMoreForProductCarousel = ! $isNewsSection && $productLayout === 'carousel';
                 $productCarouselHasMore = ! $isNewsSection && $productLayout === 'carousel' && $this->hasMoreCarouselItems($type);
@@ -275,6 +275,88 @@
                                 @endforeach
                             </ul>
                         </div>
+                    </div>
+                @elseif (! $isNewsSection && $productLayout === 'editorial_flow')
+                    <div class="cx-public-section-content mx-auto grid max-w-6xl gap-8 lg:gap-10" data-product-editorial-flow>
+                        @foreach ($displayRecords as $record)
+                            @php
+                                $recordTitle = method_exists($record, 'localized') ? $record->localized('title') : data_get($record, 'title');
+                                $recordDescriptionSource = method_exists($record, 'localized') ? $record->localized('description') : data_get($record, 'description');
+                                $recordDescription = filled($recordDescriptionSource) ? str((string) $recordDescriptionSource)->stripTags()->squish()->limit(220)->toString() : null;
+                                $recordImage = method_exists($record, 'featuredImageUrl') ? $record->featuredImageUrl() : $assetUrl(data_get($record, 'image') ?: data_get($record, 'featured_image'));
+                                $recordUrl = \IvanBaric\NivaTemplate\Support\NivaTemplateModels::isProduct($record) ? $this->productContentUrl((string) ($record->slug ?: $record->uuid)) : null;
+                                $recordPrice = $productPriceFor($record);
+                                $lookbookNumber = str_pad((string) $loop->iteration, 2, '0', STR_PAD_LEFT);
+                            @endphp
+
+                            <article
+                                wire:key="product-editorial-flow-{{ data_get($record, 'id', $loop->index) }}"
+                                @class([
+                                    'relative isolate grid overflow-hidden rounded-[2rem] border border-[color:var(--niva-primary-100)]/80 shadow-xl shadow-zinc-950/10 transition duration-300 ease-out hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-zinc-950/15 dark:border-[color:var(--niva-primary-900)]/60 dark:shadow-black/30 lg:grid-cols-12 lg:items-stretch',
+                                    'bg-[linear-gradient(135deg,var(--niva-primary-50),#ffffff_55%,var(--niva-primary-100))] dark:bg-[linear-gradient(135deg,var(--niva-primary-950),#18181b_58%,var(--niva-primary-950))]' => $loop->odd,
+                                    'bg-white dark:bg-zinc-950' => $loop->even,
+                                ])
+                            >
+                                <div class="absolute -right-20 -top-24 -z-10 size-56 rounded-full bg-[color:var(--niva-primary-200)]/35 blur-3xl dark:bg-[color:var(--niva-primary-800)]/15" aria-hidden="true"></div>
+
+                                <div @class([
+                                    'p-3 sm:p-4 lg:col-span-7 lg:p-5',
+                                    'lg:col-start-1 lg:row-start-1' => $loop->odd,
+                                    'lg:order-2 lg:col-start-6 lg:row-start-1' => $loop->even,
+                                ])>
+                                    <div class="group/image relative overflow-hidden rounded-[1.55rem] bg-zinc-100 shadow-lg shadow-zinc-950/10 ring-1 ring-white/90 dark:bg-zinc-900 dark:shadow-black/30 dark:ring-white/10 lg:h-full">
+                                        @if ($recordImage)
+                                            @if ($recordUrl)
+                                                <a href="{{ $recordUrl }}" class="block h-full cursor-pointer" title="{{ $recordTitle }}" aria-label="{{ $recordTitle }}">
+                                                    <img src="{{ $recordImage }}" alt="" class="aspect-[4/3] w-full object-cover transition duration-700 ease-out group-hover/image:scale-[1.025] lg:h-full lg:aspect-auto" loading="lazy" decoding="async">
+                                                </a>
+                                            @else
+                                                <img src="{{ $recordImage }}" alt="" class="aspect-[4/3] w-full object-cover lg:h-full lg:aspect-auto" loading="lazy" decoding="async">
+                                            @endif
+                                        @else
+                                            <x-corexis::public-image-placeholder class="aspect-[4/3] size-full" icon="cube" icon-class="size-10" />
+                                        @endif
+
+                                        <span class="absolute left-4 top-4 grid size-11 place-items-center rounded-full bg-white/90 text-xs font-bold tabular-nums text-[color:var(--niva-primary-700)] shadow-sm ring-1 ring-white/80 backdrop-blur-md dark:bg-zinc-950/80 dark:text-[color:var(--niva-primary-300)] dark:ring-white/10" aria-hidden="true">{{ $lookbookNumber }}</span>
+                                    </div>
+                                </div>
+
+                                <div @class([
+                                    'relative flex min-w-0 flex-col justify-center px-6 py-8 sm:px-9 sm:py-10 lg:col-span-5 lg:px-11 lg:py-12',
+                                    'lg:col-start-8 lg:row-start-1' => $loop->odd,
+                                    'lg:order-1 lg:col-start-1 lg:row-start-1' => $loop->even,
+                                ])>
+                                    <div class="mb-7 flex items-center justify-between gap-4">
+                                        <span class="flex items-center gap-2" aria-hidden="true">
+                                            <span class="h-px w-9 bg-[color:var(--niva-primary)]"></span>
+                                            <span class="size-1.5 rounded-full bg-[color:var(--niva-primary)]"></span>
+                                        </span>
+
+                                        @if ($recordPrice)
+                                            <span class="rounded-full bg-white/80 px-3 py-1.5 cx-public-meta-strong text-[color:var(--niva-primary-700)] shadow-sm ring-1 ring-[color:var(--niva-primary-100)] backdrop-blur-sm dark:bg-zinc-950/70 dark:text-[color:var(--niva-primary-300)] dark:ring-[color:var(--niva-primary-900)]">{{ $recordPrice }}</span>
+                                        @endif
+                                    </div>
+
+                                    <h3 class="cx-public-featured-title tracking-tight text-zinc-950 dark:text-white">
+                                        @if ($recordUrl)
+                                            <a href="{{ $recordUrl }}" class="cursor-pointer transition hover:text-[color:var(--niva-primary-800)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $recordTitle }}</a>
+                                        @else
+                                            {{ $recordTitle }}
+                                        @endif
+                                    </h3>
+
+                                    @if ($recordDescription)
+                                        <p class="mt-4 cx-public-body text-zinc-600 dark:text-zinc-300">{{ $recordDescription }}</p>
+                                    @endif
+
+                                    @if ($recordUrl)
+                                        <a href="{{ $recordUrl }}" class="mt-7 inline-flex size-11 cursor-pointer items-center justify-center rounded-full bg-[color:var(--niva-primary)] text-white shadow-md shadow-[color:var(--niva-primary-900)]/20 ring-1 ring-black/5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--niva-primary-300)] focus-visible:ring-offset-2 dark:ring-white/10" aria-label="{{ __('Pogledaj rad: :title', ['title' => $recordTitle]) }}">
+                                            <flux:icon name="arrow-up-right" class="size-5" />
+                                        </a>
+                                    @endif
+                                </div>
+                            </article>
+                        @endforeach
                     </div>
                 @elseif (! $isNewsSection && $productLayout === 'highlighted')
                     @php
@@ -862,6 +944,144 @@
                             </div>
                         @endif
                     </div>
+                @elseif ($isNewsSection && $newsLayout === 'magazine_cover')
+                    @php
+                        $leadRecord = $displayRecords->first();
+                        $indexRecords = $displayRecords->slice(1)->values();
+                        $leadTitle = $leadRecord && method_exists($leadRecord, 'localized') ? $leadRecord->localized('title') : data_get($leadRecord, 'title');
+                        $leadDescriptionSource = $leadRecord && method_exists($leadRecord, 'localized') ? ($leadRecord->localized('excerpt') ?: $leadRecord->localized('content')) : data_get($leadRecord, 'description');
+                        $leadDescription = filled($leadDescriptionSource) ? str((string) $leadDescriptionSource)->stripTags()->squish()->limit(230)->toString() : null;
+                        $leadImage = $leadRecord && method_exists($leadRecord, 'featuredImageUrl') ? $leadRecord->featuredImageUrl() : $assetUrl(data_get($leadRecord, 'image') ?: data_get($leadRecord, 'featured_image'));
+                        $leadUrl = $leadRecord instanceof \IvanBaric\Blog\Models\Post ? $this->postContentUrl((string) $leadRecord->slug) : null;
+                        $leadAuthor = $leadRecord && $showNewsAuthor ? $newsAuthorFor($leadRecord) : null;
+                        $leadPublishedDate = $leadRecord && $showNewsDate ? $newsPublishedDateFor($leadRecord) : null;
+                        $leadPublishedAt = data_get($leadRecord, 'published_at');
+                        $leadPublishedDateMachine = $leadPublishedAt
+                            ? ($leadPublishedAt instanceof \Illuminate\Support\Carbon ? $leadPublishedAt : \Illuminate\Support\Carbon::parse($leadPublishedAt))->toDateString()
+                            : null;
+                    @endphp
+
+                    <div class="cx-public-section-content mx-auto max-w-6xl" data-news-magazine-cover>
+                        @if ($leadRecord)
+                            <article wire:key="news-magazine-cover-lead-{{ $leadRecord->getKey() ?? $leadRecord->slug ?? $leadTitle }}" class="group grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.95fr)] lg:items-center lg:gap-12">
+                                <figure class="min-h-64 overflow-hidden rounded-xl bg-zinc-100 sm:min-h-80 lg:min-h-[30rem] dark:bg-zinc-900">
+                                    @if ($leadImage)
+                                        <img src="{{ $leadImage }}" alt="" class="size-full object-cover transition duration-500 ease-out group-hover:scale-[1.015]" loading="lazy" decoding="async">
+                                    @else
+                                        <x-corexis::public-image-placeholder class="size-full" icon="newspaper" icon-class="size-12" />
+                                    @endif
+                                </figure>
+
+                                <div class="flex flex-col justify-center lg:py-8">
+                                    <span class="mb-6 h-0.5 w-14 bg-[color:var(--niva-primary)]" aria-hidden="true"></span>
+                                    <h3 class="max-w-2xl text-xl font-semibold leading-snug tracking-tight text-zinc-950 sm:text-2xl dark:text-white">
+                                        @if ($leadUrl)
+                                            <a href="{{ $leadUrl }}" class="cursor-pointer transition hover:text-[color:var(--niva-primary-800)] dark:hover:text-[color:var(--niva-primary-200)]">{{ $leadTitle }}</a>
+                                        @else
+                                            {{ $leadTitle }}
+                                        @endif
+                                    </h3>
+
+                                    @if ($leadDescription)
+                                        <p class="mt-5 text-base leading-7 text-zinc-600 sm:text-lg dark:text-zinc-300">{{ $leadDescription }}</p>
+                                    @endif
+
+                                    <div class="mt-8 flex flex-wrap items-center justify-between gap-5 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+                                        @if ($leadPublishedDate || $leadAuthor)
+                                            <p class="flex flex-wrap items-center gap-x-3 gap-y-1 cx-public-meta-strong text-zinc-500 dark:text-zinc-400">
+                                                @if ($leadPublishedDate)
+                                                    <time @if ($leadPublishedDateMachine) datetime="{{ $leadPublishedDateMachine }}" @endif>{{ $leadPublishedDate }}</time>
+                                                @endif
+                                                @if ($leadPublishedDate && $leadAuthor)
+                                                    <span class="size-1 rounded-full bg-[color:var(--niva-primary-300)]" aria-hidden="true"></span>
+                                                @endif
+                                                @if ($leadAuthor)
+                                                    <span>{{ $leadAuthor }}</span>
+                                                @endif
+                                            </p>
+                                        @endif
+
+                                        @if ($leadUrl)
+                                            <a href="{{ $leadUrl }}" class="inline-flex cursor-pointer items-center gap-2 cx-public-meta-strong text-[color:var(--niva-primary-700)] transition hover:text-[color:var(--niva-primary-800)] dark:text-[color:var(--niva-primary-300)] dark:hover:text-[color:var(--niva-primary-200)]">
+                                                {{ $newsReadMoreLabel }}
+                                                <flux:icon name="arrow-up-right" class="size-4" />
+                                            </a>
+                                        @endif
+                                    </div>
+                                </div>
+                            </article>
+                        @endif
+
+                        @if ($indexRecords->isNotEmpty())
+                            <ol class="mt-8 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800" data-news-magazine-index>
+                                @foreach ($indexRecords as $record)
+                                    @php
+                                        $recordTitle = method_exists($record, 'localized') ? $record->localized('title') : data_get($record, 'title');
+                                        $recordDescriptionSource = method_exists($record, 'localized') ? ($record->localized('excerpt') ?: $record->localized('content')) : data_get($record, 'description');
+                                        $recordDescription = filled($recordDescriptionSource) ? str((string) $recordDescriptionSource)->stripTags()->squish()->limit(155)->toString() : null;
+                                        $recordImage = method_exists($record, 'featuredImageUrl') ? $record->featuredImageUrl() : $assetUrl(data_get($record, 'image') ?: data_get($record, 'featured_image'));
+                                        $recordUrl = $record instanceof \IvanBaric\Blog\Models\Post ? $this->postContentUrl((string) $record->slug) : null;
+                                        $recordAuthor = $showNewsAuthor ? $newsAuthorFor($record) : null;
+                                        $recordPublishedDate = $showNewsDate ? $newsPublishedDateFor($record) : null;
+                                        $recordPublishedAt = data_get($record, 'published_at');
+                                        $recordPublishedDateMachine = $recordPublishedAt
+                                            ? ($recordPublishedAt instanceof \Illuminate\Support\Carbon ? $recordPublishedAt : \Illuminate\Support\Carbon::parse($recordPublishedAt))->toDateString()
+                                            : null;
+                                    @endphp
+
+                                    <li wire:key="news-magazine-index-{{ $record->getKey() ?? $record->slug ?? $recordTitle }}" class="group grid gap-4 py-6 sm:grid-cols-[8rem_minmax(0,1fr)_auto] sm:items-center sm:gap-6 lg:py-7">
+                                        <figure class="overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
+                                            @if ($recordImage)
+                                                @if ($recordUrl)
+                                                    <a href="{{ $recordUrl }}" class="block cursor-pointer" title="{{ $recordTitle }}" aria-label="{{ $recordTitle }}">
+                                                        <img src="{{ $recordImage }}" alt="" class="aspect-[4/3] w-full object-cover transition duration-500 ease-out group-hover:scale-[1.025]" loading="lazy" decoding="async">
+                                                    </a>
+                                                @else
+                                                    <img src="{{ $recordImage }}" alt="" class="aspect-[4/3] w-full object-cover" loading="lazy" decoding="async">
+                                                @endif
+                                            @else
+                                                <x-corexis::public-image-placeholder class="aspect-[4/3] w-full" icon="newspaper" icon-class="size-7" />
+                                            @endif
+                                        </figure>
+
+                                        <div class="min-w-0">
+                                            @if ($recordPublishedDate || $recordAuthor)
+                                                <p class="mb-2 flex flex-wrap items-center gap-x-2 cx-public-meta text-zinc-500 dark:text-zinc-400">
+                                                    @if ($recordPublishedDate)
+                                                        <time @if ($recordPublishedDateMachine) datetime="{{ $recordPublishedDateMachine }}" @endif>{{ $recordPublishedDate }}</time>
+                                                    @endif
+                                                    @if ($recordPublishedDate && $recordAuthor)
+                                                        <span aria-hidden="true">·</span>
+                                                    @endif
+                                                    @if ($recordAuthor)
+                                                        <span>{{ $recordAuthor }}</span>
+                                                    @endif
+                                                </p>
+                                            @endif
+
+                                            <h3 class="text-xl font-semibold leading-tight tracking-tight text-zinc-950 sm:text-[1.4rem] dark:text-white">
+                                                @if ($recordUrl)
+                                                    <a href="{{ $recordUrl }}" class="cursor-pointer transition group-hover:text-[color:var(--niva-primary-800)] dark:group-hover:text-[color:var(--niva-primary-200)]">{{ $recordTitle }}</a>
+                                                @else
+                                                    {{ $recordTitle }}
+                                                @endif
+                                            </h3>
+
+                                            @if ($recordDescription)
+                                                <p class="mt-2 max-w-3xl cx-public-item-text text-zinc-600 dark:text-zinc-300">{{ $recordDescription }}</p>
+                                            @endif
+                                        </div>
+
+                                        @if ($recordUrl)
+                                            <a href="{{ $recordUrl }}" class="grid size-11 cursor-pointer place-items-center rounded-full text-[color:var(--niva-primary-700)] ring-1 ring-[color:var(--niva-primary-200)] transition duration-200 group-hover:-translate-y-0.5 group-hover:bg-[color:var(--niva-primary)] group-hover:text-white dark:text-[color:var(--niva-primary-300)] dark:ring-[color:var(--niva-primary-800)]" aria-label="{{ __('Pročitaj objavu: :title', ['title' => $recordTitle]) }}">
+                                                <flux:icon name="arrow-up-right" class="size-4" />
+                                            </a>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ol>
+                        @endif
+                    </div>
                 @elseif ($isNewsSection && $newsLayout === 'editorial_list')
                     <div class="cx-public-section-content mx-auto max-w-4xl cx-public-stack-showcase">
                         @foreach ($displayRecords as $record)
@@ -1211,5 +1431,3 @@
                 @endif
             </div>
         <?php } ?>
-
-

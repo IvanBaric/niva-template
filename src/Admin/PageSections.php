@@ -199,7 +199,7 @@ final class PageSections
 
                 Tab::settings(__('Društvene mreže'), 'social')
                     ->heading(__('Društvene mreže'))
-                    ->description(__('Unesite URL-ove profila koji se prikazuju u podnožju i u modulu Društvene mreže. Prazna polja se neće prikazati.'))
+                    ->description(__('Unesite URL-ove profila koji se prikazuju u podnožju. Modul Društvene mreže uređuje se zasebno kroz svoje stavke. Prazna polja se neće prikazati.'))
                     ->submitLabel(__('Spremi društvene mreže'))
                     ->fields($this->footerSocialLinkFields()),
 
@@ -463,7 +463,7 @@ final class PageSections
                     ->inlineForm(submitLabel: __('Spremi sadržaj'))
                     ->fields([
                         Field::textarea('content')
-                            ->label(__('O zadruzi'))
+                            ->label(__('Opis'))
                             ->rows(10)
                             ->nullable(),
 
@@ -529,7 +529,7 @@ final class PageSections
 
                         LayoutVariant::add('editorial_frame')
                             ->label(__('Urednički preklop'))
-                            ->description(__('Velika fotografija i istaknuta misao grade slojevitu naslovničku kompoziciju.'))
+                            ->description(__('Mirni urednički odnos fotografije i istaknute misli, s tekstom u prozračnom nastavku.'))
                             ->option('preview', 'about_editorial_frame'),
                     ]),
             ]);
@@ -824,6 +824,16 @@ final class PageSections
                             ->label(__('Kartica preko slike'))
                             ->description(__('Fotografija je pozadina bannera, a sadržaj je u svijetloj zaobljenoj kartici preko slike.'))
                             ->option('preview', 'collaboration_image_card'),
+
+                        LayoutVariant::add('editorial_frame')
+                            ->label(__('Urednički okvir'))
+                            ->description(__('Prozračan svijetli raspored s velikom tipografijom lijevo i uokvirenom fotografijom desno.'))
+                            ->option('preview', 'collaboration_editorial_frame'),
+
+                        LayoutVariant::add('panorama')
+                            ->label(__('Panoramski potpis'))
+                            ->description(__('Široka fotografija iznad elegantne obojene trake s jasnim pozivom i izdvojenim gumbom.'))
+                            ->option('preview', 'collaboration_panorama'),
                     ]),
 
                 Tab::settings(__('Postavke'))
@@ -933,6 +943,12 @@ final class PageSections
                             ->option('preview', 'products_carousel')
                             ->option('badge', __('Animacija'))
                             ->option('animated', true),
+
+                        LayoutVariant::add('editorial_flow')
+                            ->label(__('Urednički lookbook'))
+                            ->description(__('Veliki naizmjenični redovi pretvaraju radove u premium uredničku priču s brojem, opisom i cijenom.'))
+                            ->option('preview', 'products_editorial_flow')
+                            ->option('badge', __('Premium')),
                     ]),
 
                 Tab::settings(__('Postavke'))
@@ -1120,6 +1136,13 @@ final class PageSections
                             ->option('preview', 'gallery_carousel')
                             ->option('badge', __('Animacija'))
                             ->option('animated', true)
+                            ->visibleWhen('content_source', 'albums'),
+
+                        LayoutVariant::add('curated_focus')
+                            ->label(__('Kustoski fokus'))
+                            ->description(__('Prozračan pregled s velikom aktivnom fotografijom i mirnim popisom albuma.'))
+                            ->option('preview', 'gallery_curated_focus')
+                            ->option('badge', __('Premium'))
                             ->visibleWhen('content_source', 'albums'),
 
                         LayoutVariant::add('grid_2x2')
@@ -1586,6 +1609,12 @@ final class PageSections
                             ->label(__('Editorial redovi'))
                             ->description(__('Prostrani redovi s većom slikom lijevo i tekstom objave desno.'))
                             ->option('preview', 'news_editorial_list'),
+
+                        LayoutVariant::add('magazine_cover')
+                            ->label(__('Naslovnica magazina'))
+                            ->description(__('Prozračna izdvojena objava sa slikom i sadržajem u dva polja, iznad pregleda ostalih objava.'))
+                            ->option('preview', 'news_magazine_cover')
+                            ->option('badge', __('Premium')),
                     ]),
 
                 Tab::settings(__('Postavke'))
@@ -2814,7 +2843,7 @@ final class PageSections
             'all_products' => [
                 'title' => __('Radovi i rukotvorine'),
                 'description' => __('Pregled radova nastalih kroz radionice, školske aktivnosti i zajednički kreativni rad.'),
-                'settings' => ['show_price' => true, 'limit' => 3, 'layout_variant' => 'cards', 'single_back_label' => __('Natrag na radove'), 'single_previous_label' => __('Prethodni rad'), 'single_next_label' => __('Sljedeći rad')],
+                'settings' => ['content_source' => 'all', 'show_price' => true, 'limit' => 3, 'layout_variant' => 'cards', 'single_back_label' => __('Natrag na radove'), 'single_previous_label' => __('Prethodni rad'), 'single_next_label' => __('Sljedeći rad')],
             ],
             'gallery' => [
                 'title' => __('Istaknuti albumi'),
